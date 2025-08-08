@@ -2,7 +2,8 @@
   "name": "backend",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "dist/server.js",
+  "type": "commonjs",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "build": "tsc",
@@ -16,8 +17,8 @@
     "cors": "^2.8.5",
     "dotenv": "^17.2.0",
     "express": "^5.1.0",
-    "express-session": "^1.18.1",
-    "mongoose": "^8.16.3",
+    "express-session": "^1.18.2",
+    "mongoose": "^8.17.1",
     "multer": "^2.0.2",
     "passport": "^0.7.0",
     "passport-google-oauth20": "^2.0.0"
@@ -28,12 +29,13 @@
     "@types/express": "^5.0.3",
     "@types/express-session": "^1.18.2",
     "@types/multer": "^2.0.0",
-    "@types/node": "^24.0.13",
+    "@types/node": "^24.2.1",
     "@types/passport": "^1.0.17",
     "@types/passport-google-oauth20": "^2.0.16",
     "ts-node-dev": "^2.0.0",
-    "typescript": "^5.8.3"
+    "typescript": "^5.9.2"
+  },
+  "engines": {
+    "node": ">=18"
   }
 }
-
-

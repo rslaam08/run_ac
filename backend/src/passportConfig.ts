@@ -1,34 +1,54 @@
-import 'dotenv/config';
 import passport from 'passport';
-import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
+import { Strategy as GoogleStrategy, Profile, VerifyCallback } from 'passport-google-oauth20';
 import User from './models/User';
 
-passport.use(new GoogleStrategy({
-  clientID:     process.env.GOOGLE_CLIENT_ID!,
-  clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-  callbackURL:  '/auth/google/callback'
-}, async (accessToken, refreshToken, profile, done) => {
-  // 구글 프로필 받고 DB에 사용자 생성/조회
-  let user = await User.findOne({ googleId: profile.id });
-  if (!user) {
-    const seq = (await User.countDocuments()) + 1;
-    user = await User.create({ googleId: profile.id, name: profile.displayName, intro: '', seq });
-  }
-  // done에 유저 도큐먼트를 넘겨 줍니다
-  done(null, user);
-}));
+const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID as string;
+const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET as string;
+const GOOGLE_CALLBACK_URL = process.env.GOOGLE_CALLBACK_URL as string;
 
-// 로그인 성공 시 세션에 user.seq만 저장
+passport.use(new GoogleStrategy(
+  {
+    clientID: GOOGLE_CLIENT_ID,
+    clientSecret: GOOGLE_CLIENT_SECRET,
+    callbackURL: GOOGLE_CALLBACK_URL
+  },
+  async (_accessToken: string, _refreshToken: string, profile: Profile, done: VerifyCallback) => {
+    try {
+      const googleId = profile.id;
+      const name = profile.displayName || 'NoName';
+
+      let user = await User.findOne({ googleId });
+      if (!user) {
+        // seq 발급(예: Counter 모델 쓰거나 max+1)
+        const max = await User.findOne().sort({ seq: -1 }).lean();
+        const nextSeq = (max?.seq || 0) + 1;
+
+        user = await User.create({
+          googleId,
+          name,
+          seq: nextSeq,
+          intro: '',
+          isAdmin: false
+        });
+      }
+      return done(null, user);
+    } catch (e) {
+      return done(e as any);
+    }
+  }
+));
+
 passport.serializeUser((user: any, done) => {
-  done(null, user.seq);
+  done(null, user.id);
 });
 
-// 매 요청마다 시리얼라이즈된 seq로 실제 유저 도큐먼트 조회
-passport.deserializeUser(async (seq: number, done) => {
+passport.deserializeUser(async (id: string, done) => {
   try {
-    const user = await User.findOne({ seq });
-    done(null, user || false);
-  } catch (err) {
-    done(err);
+    const user = await User.findById(id);
+    done(null, user as any);
+  } catch (e) {
+    done(e as any);
   }
 });
+
+export default passport;

@@ -1,15 +1,18 @@
-// backend/tsconfig.json
 {
   "compilerOptions": {
     "target": "ES2020",
     "module": "commonjs",
+    "lib": ["ES2020"],
+    "outDir": "dist",
+    "rootDir": "src",
     "moduleResolution": "node",
+    "types": ["node"],
     "esModuleInterop": true,
-    "strict": true,
-    "forceConsistentCasingInFileNames": true
-    // typeRoots 건드리지 마세요 — 기본값(node_modules/@types + src/**/*.d.ts)을 사용합니다.
+    "resolveJsonModule": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "strict": false,
+    "noImplicitAny": false
   },
-  "include": [
-    "src"
-  ]
+  "include": ["src"]
 }

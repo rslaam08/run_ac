@@ -7,6 +7,9 @@ const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET as string;
 // 반드시 절대 URL이어야 합니다. (예: https://sshsrun-api.onrender.com/auth/google/callback)
 const GOOGLE_CALLBACK_URL =
   (process.env.GOOGLE_CALLBACK_URL as string) || 'http://localhost:4000/auth/google/callback';
+console.log('[OAuth] GOOGLE_CLIENT_ID exists?', !!GOOGLE_CLIENT_ID);
+console.log('[OAuth] GOOGLE_CLIENT_SECRET exists?', !!GOOGLE_CLIENT_SECRET);
+console.log('[OAuth] GOOGLE_CALLBACK_URL =', GOOGLE_CALLBACK_URL);
 
 if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET) {
   // 환경변수 누락 시 바로 알 수 있게 로그

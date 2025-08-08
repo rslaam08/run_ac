@@ -23,3 +23,11 @@ frontend/
 
 mkdir backend\uploads -Force | Out-Null
 New-Item backend\uploads\.gitkeep -ItemType File -Force | Out-Null
+# root
+node_modules/
+.env
+uploads/
+
+# frontend
+/frontend/node_modules/
+/frontend/build/

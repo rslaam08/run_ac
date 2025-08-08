@@ -44,7 +44,7 @@ router.get('/google', passport.authenticate('google', { scope: ['profile', 'emai
 // 2) 구글 OAuth 콜백
 router.get(
   '/google/callback',
-  passport.authenticate('google', { failureRedirect: '/' }),
+  passport.authenticate('google', { failureRedirect: pickFrontendHome() }),
   (_req, res) => {
     // 로그인 성공 후 프론트로 이동
     res.redirect(pickFrontendHome());
@@ -53,7 +53,9 @@ router.get(
 
 // 3) 현재 로그인된 유저 정보
 router.get('/me', (req, res) => {
-  if (req.isAuthenticated && req.isAuthenticated() && req.user) {
+  // Passport 타입 선언 이슈 피하려면 as any 캐스팅
+  const isAuthed = (req as any).isAuthenticated?.() ?? false;
+  if (isAuthed && req.user) {
     const user = req.user as any;
     return res.json({
       seq: user.seq,
@@ -74,8 +76,9 @@ router.post('/logout', (req, res, next) => {
       // 세션은 파괴하고
       const cookieOptions = isProd
         ? { path: '/', httpOnly: true, sameSite: 'none' as const, secure: true }
-        : { path: '/', httpOnly: true, sameSite: 'lax' as const, secure: false };
+        : { path: '/', httpOnly: true, sameSite: 'lax'  as const, secure: false };
 
+      // server.ts의 express-session name과 동일해야 함 (name: 'smsession')
       res.clearCookie('smsession', cookieOptions);
 
       if (sessionErr) {

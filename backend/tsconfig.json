@@ -6,13 +6,14 @@
     "outDir": "dist",
     "rootDir": "src",
     "moduleResolution": "node",
-    "types": ["node"],
     "esModuleInterop": true,
     "resolveJsonModule": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "strict": false,
-    "noImplicitAny": false
+    "noImplicitAny": false,
+    "types": ["node"]   // ← 이 줄이 있다면 @types/node가 반드시 설치되어야 함
+    // "typeRoots": ["./types", "./node_modules/@types"]  ← 만약 여길 커스텀해뒀다면 반드시 @types 경로 포함
   },
   "include": ["src"]
 }

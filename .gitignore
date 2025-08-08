@@ -1,0 +1,25 @@
+@"
+# 공통
+node_modules/
+dist/
+.DS_Store
+
+# 환경변수
+.env
+.env.*
+backend/.env
+frontend/.env
+
+# 백엔드 빌드 산출물
+backend/dist/
+
+# 업로드 파일(빈 폴더만 유지)
+backend/uploads/*
+!backend/uploads/.gitkeep
+
+# 프론트(이 레포에선 제외할 거면)
+frontend/
+"@ | Out-File -Encoding UTF8 .gitignore
+
+mkdir backend\uploads -Force | Out-Null
+New-Item backend\uploads\.gitkeep -ItemType File -Force | Out-Null

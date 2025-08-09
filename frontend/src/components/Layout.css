@@ -12,14 +12,14 @@
 /* Header */
 .header{
   background:#4F46E5; color:#fff;
-  padding:0.75rem var(--side-pad);
+  padding:0;
   box-shadow:0 2px 4px rgba(0,0,0,.1);
 }
 
 /* 헤더 안의 실제 컨텐츠 폭 = 본문과 동일 */
 .header-content{
   display:flex; align-items:center; justify-content:space-between;
-  width:100%; max-width:var(--page-max); margin:0 auto;
+  width:100%; max-width:var(--page-max); margin:0 auto; padding: 0.75rem var(--side-pad);
 }
 
 /* 좌측 로고 */

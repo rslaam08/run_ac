@@ -1,30 +1,20 @@
+// backend/src/routes/record.ts
 import path from 'path';
 import fs from 'fs';
 import express from 'express';
 import multer from 'multer';
 import { Types } from 'mongoose';
 import Record from '../models/Record';
-import User from '../models/User';
+import { ensureJwt } from '../middleware/jwt';
 
 const router = express.Router();
 
 /** ─────────────────────────────
- *  로그인 가드
+ *  업로드 디렉터리 (영구 디스크 권장)
+ *  - Render: UPLOAD_DIR=/data/uploads 로 설정 권장
+ *  - 미설정 시 프로젝트 내부 /uploads 사용
  * ───────────────────────────── */
-function ensureAuth(req: express.Request, res: express.Response, next: express.NextFunction) {
-  const isAuthed = (req as any).isAuthenticated?.() ?? false;
-  if (isAuthed) return next();
-  return res.status(401).json({ error: 'Unauthorized' });
-}
-
-/** ─────────────────────────────
- *  업로드 디렉터리 (지속 디스크 지원)
- *  - Render Disk 마운트: /data
- *  - 환경변수 UPLOAD_DIR=/data/uploads 권장
- * ───────────────────────────── */
-const UPLOAD_DIR =
-  process.env.UPLOAD_DIR || path.join(__dirname, '../../uploads');
-
+const UPLOAD_DIR = process.env.UPLOAD_DIR || path.join(__dirname, '../../uploads');
 if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 
 /** Multer 설정 (이미지 전용 / 50MB 제한) */
@@ -64,12 +54,14 @@ function safeUnlink(absPath: string | null | undefined) {
  *  [POST] /api/records
  *  새 기록 업로드 (승인 대기)
  *  body: time(HH:MM:SS), distance(km), date(YYYY-MM-DD), image(file)
+ *  보호: JWT
  * ───────────────────────────── */
-router.post('/', ensureAuth, upload.single('image'), async (req, res) => {
+router.post('/', ensureJwt, upload.single('image'), async (req, res) => {
   const absFilePath = req.file?.path;
 
   try {
-    const me = req.user as any;
+    // JWT에서 사용자
+    const me = (req as any).jwtUser as { seq: number };
     const userSeq: number = me?.seq;
 
     const { time, distance, date } = req.body as {
@@ -110,14 +102,14 @@ router.post('/', ensureAuth, upload.single('image'), async (req, res) => {
       return res.status(400).json({ error: '이미지 파일이 필요합니다.' });
     }
 
-    // 이미지 절대 URL (PUBLIC_API_URL 사용)
+    // 이미지 절대 URL 구성
     const filename = path.basename(req.file.path);
     const base =
       (process.env.PUBLIC_API_URL?.replace(/\/$/, '')) ||
       `${req.protocol}://${req.get('host')}`;
     const imageUrl = `${base}/uploads/${filename}`;
 
-    // 날짜
+    // 날짜 파싱
     const dateObj = new Date(date);
     if (isNaN(dateObj.getTime())) {
       safeUnlink(absFilePath);
@@ -161,8 +153,8 @@ router.get('/user/:seq', async (req, res) => {
 });
 
 /** (관리자) 승인 대기 목록 — GET /api/records/pending */
-router.get('/pending', ensureAuth, async (req, res) => {
-  const me = req.user as any;
+router.get('/pending', ensureJwt, async (req, res) => {
+  const me = (req as any).jwtUser as { isAdmin?: boolean };
   if (!me?.isAdmin) return res.status(403).json({ error: 'Forbidden' });
 
   const list = await Record.find({ status: 'pending' })
@@ -171,8 +163,8 @@ router.get('/pending', ensureAuth, async (req, res) => {
 });
 
 /** (관리자) 승인 — PUT /api/records/:id/approve */
-router.put('/:id/approve', ensureAuth, async (req, res) => {
-  const me = req.user as any;
+router.put('/:id/approve', ensureJwt, async (req, res) => {
+  const me = (req as any).jwtUser as { isAdmin?: boolean };
   if (!me?.isAdmin) return res.status(403).json({ error: 'Forbidden' });
 
   const id = req.params.id;
@@ -183,8 +175,8 @@ router.put('/:id/approve', ensureAuth, async (req, res) => {
 });
 
 /** (관리자) 거절 — PUT /api/records/:id/reject */
-router.put('/:id/reject', ensureAuth, async (req, res) => {
-  const me = req.user as any;
+router.put('/:id/reject', ensureJwt, async (req, res) => {
+  const me = (req as any).jwtUser as { isAdmin?: boolean };
   if (!me?.isAdmin) return res.status(403).json({ error: 'Forbidden' });
 
   const id = req.params.id;

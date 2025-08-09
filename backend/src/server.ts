@@ -34,10 +34,16 @@ app.set('trust proxy', 1);
 app.use(cors({
   origin(origin, cb) {
     if (!origin) return cb(null, true);
-    if (ALLOWED_ORIGINS.includes(origin)) return cb(null, true);
+    const ok = [
+      'http://localhost:3000',
+      'https://rslaam08.github.io',
+      process.env.PUBLIC_API_URL?.replace(/\/$/, ''),
+    ].filter(Boolean) as string[];
+    const norm = origin.replace(/\/$/, '');
+    if (ok.includes(norm)) return cb(null, true);
     return cb(new Error(`CORS blocked for origin: ${origin}`));
   },
-  credentials: true
+  credentials: false  // ← 쿠키 안씀
 }));
 
 app.use(express.json());

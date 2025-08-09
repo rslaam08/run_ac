@@ -1,3 +1,4 @@
+// frontend/src/components/Layout.tsx
 import React, { useState, useEffect, FormEvent } from 'react';
 import { Link, Outlet, useNavigate } from 'react-router-dom';
 import './Layout.css';
@@ -14,36 +15,39 @@ const Header: React.FC = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-  // 같은 오리진으로 배포되므로 상대 경로 사용
-  fetch('/auth/me', { credentials: 'include' })
-    .then(res => {
-      if (res.ok) {
-        res.json().then(data => {
-          setLoggedIn(true);
-          setUserSeq(data.seq);
-        });
-      } else {
+    // 같은 오리진으로 배포되므로 절대 URL 대신 상대 경로 사용
+    fetch('/auth/me', { credentials: 'include' })
+      .then(async (res) => {
+        if (!res.ok) {
+          setLoggedIn(false);
+          setUserSeq(null);
+          return;
+        }
+        const data = await res.json();
+        setLoggedIn(true);
+        setUserSeq(data.seq);
+      })
+      .catch(() => {
         setLoggedIn(false);
         setUserSeq(null);
-      }
-    })
-    .catch(() => {
-      setLoggedIn(false);
-      setUserSeq(null);
-    });
+      });
   }, []);
 
   const handleLogin = () => {
+    // 서버의 OAuth 시작 엔드포인트로 이동
     window.location.href = '/auth/google';
   };
 
   const handleLogout = () => {
     fetch('/auth/logout', { method: 'POST', credentials: 'include' })
-      .then(() => (window.location.href = '/'))
+      .then(() => {
+        // 세션/쿠키 삭제 후 홈으로
+        navigate('/', { replace: true });
+      })
       .catch(err => console.error('Logout failed', err));
   };
 
-  // 유저 검색: /api/user 전체를 받아서 클라이언트에서 매칭
+  // 유저 검색: /api/user 전체 목록을 받아서 클라이언트에서 매칭
   const handleSearch = async (e: FormEvent) => {
     e.preventDefault();
     const q = searchTerm.trim();
@@ -51,17 +55,23 @@ const Header: React.FC = () => {
 
     try {
       setSearchBusy(true);
-      const res = await fetch('/api/user');
+      const res = await fetch('/api/user', { credentials: 'include' });
       if (!res.ok) throw new Error('failed to fetch users');
       const users: SimpleUser[] = await res.json();
 
       // 1) 대소문자 무시 정확 일치
       const exact = users.find(u => u.name.toLowerCase() === q.toLowerCase());
-      if (exact) return navigate(`/user/${exact.seq}`);
+      if (exact) {
+        navigate(`/user/${exact.seq}`);
+        return;
+      }
 
       // 2) 부분 일치
       const partial = users.find(u => u.name.toLowerCase().includes(q.toLowerCase()));
-      if (partial) return navigate(`/user/${partial.seq}`);
+      if (partial) {
+        navigate(`/user/${partial.seq}`);
+        return;
+      }
 
       alert('해당 닉네임의 유저를 찾을 수 없습니다.');
     } catch (err) {
@@ -102,7 +112,7 @@ const Header: React.FC = () => {
             <Link to="/calc" className="nav-btn">runbility 계산기</Link>
           </div>
 
-          {/* 유저 검색창 — 맨 오른쪽으로 */}
+          {/* 유저 검색창 — 맨 오른쪽 */}
           <form className="user-search" onSubmit={handleSearch}>
             <input
               type="text"

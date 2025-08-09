@@ -1,8 +1,7 @@
 // frontend/src/pages/AdminConfirm.tsx
 
 import React, { useEffect, useState } from 'react';
-import axios from 'axios';
-import { api } from '../api/apiClient';
+import { api, authApi } from '../api/apiClient';  // ✅ 여기서 가져옵니다
 import './AdminConfirm.css';
 
 interface IRec {
@@ -14,42 +13,50 @@ interface IRec {
   imageUrl:string;
 }
 
-const authApi = axios.create({
-  baseURL: 'https://sshsrun-api.onrender.com/auth',
-  withCredentials: true
-});
-
 const AdminConfirm: React.FC = () => {
   const [records, setRecs] = useState<IRec[]>([]);
   const [isAdmin, setAdmin]= useState(false);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // JWT 헤더가 자동으로 붙는 authApi 사용
     authApi.get('/me')
       .then(res => {
-        if (res.data.isAdmin) {
+        if (res.data?.isAdmin) {
           setAdmin(true);
-          api.get<IRec[]>('/records/pending')
-            .then(r => setRecs(r.data))
-            .catch(err => {
-              console.error(
-                '🛑 Failed to load pending records:',
-                err.response?.data || err
-              );
-            });
+          return api.get<IRec[]>('/records/pending');
         }
+        // 관리자가 아니면 빈 배열 반환
+        setAdmin(false);
+        return { data: [] as IRec[] };
       })
-      .catch(() => {});
+      .then(r => setRecs(r.data))
+      .catch(err => {
+        console.error('🛑 /auth/me or /records/pending failed:', err?.response?.data || err);
+        setAdmin(false);
+      })
+      .finally(() => setLoading(false));
   }, []);
 
+  if (loading) return <div>로딩 중…</div>;
   if (!isAdmin) return <div>접근 권한이 없습니다.</div>;
 
   const approve = (id: string) =>
     api.put(`/records/${id}/approve`)
-       .then(() => setRecs(rs => rs.filter(r => r._id !== id)));
+       .then(() => setRecs(rs => rs.filter(r => r._id !== id)))
+       .catch(err => console.error('승인 실패:', err?.response?.data || err));
 
   const reject = (id: string) =>
     api.put(`/records/${id}/reject`)
-       .then(() => setRecs(rs => rs.filter(r => r._id !== id)));
+       .then(() => setRecs(rs => rs.filter(r => r._id !== id)))
+       .catch(err => console.error('거절 실패:', err?.response?.data || err));
+
+  const formatTime = (sec: number) => {
+    const h = Math.floor(sec/3600);
+    const m = Math.floor((sec % 3600)/60);
+    const s = sec % 60;
+    return [h, m, s].map(v => String(v).padStart(2, '0')).join(':');
+  };
 
   return (
     <div className="p-4">
@@ -61,9 +68,9 @@ const AdminConfirm: React.FC = () => {
           <p>거리: {r.distance.toFixed(2)} km</p>
           <p>날짜: {new Date(r.date).toLocaleDateString()}</p>
           <img
-          src={r.imageUrl}
-          alt=""
-          className="record-image mt-2"
+            src={r.imageUrl}
+            alt=""
+            className="record-image mt-2"
           />
           <div className="mt-2">
             <button
@@ -85,12 +92,5 @@ const AdminConfirm: React.FC = () => {
     </div>
   );
 };
-
-function formatTime(sec: number) {
-  const h = Math.floor(sec/3600);
-  const m = Math.floor((sec % 3600)/60);
-  const s = sec % 60;
-  return [h, m, s].map(v => String(v).padStart(2, '0')).join(':');
-}
 
 export default AdminConfirm;

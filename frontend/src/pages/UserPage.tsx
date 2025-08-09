@@ -381,8 +381,8 @@ const UserPage: React.FC = () => {
               value={timeInput}
               onChange={e=>setTimeInput(e.target.value)}
               placeholder="HH:MM:SS"
-              pattern="^\\d{1,2}:[0-5]\\d:[0-5]\\d$"
-              title="예: 00:45:30"
+              pattern={String.raw`^\d{1,2}:[0-5]\d:[0-5]\d$`}
+              title="예: 00:10:30"
               required
             />
           </div>

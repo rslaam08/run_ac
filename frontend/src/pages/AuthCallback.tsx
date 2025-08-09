@@ -1,62 +1,47 @@
-// frontend/src/pages/AuthCallback.tsx
 import React, { useEffect, useState } from 'react';
 import { setAuthToken } from '../api/apiClient';
 import { useNavigate } from 'react-router-dom';
 
-function extractToken(): string | null {
-  // 1) 해시에서 token= 파라미터
-  const hash = window.location.hash || '';
-  const hashParams = new URLSearchParams(hash.slice(1)); // remove '#'
-  let token = hashParams.get('token');
-
-  // 2) 혹시 검색쿼리로 왔다면 거기서도 시도
-  if (!token) {
-    const qs = new URLSearchParams(window.location.search);
-    token = qs.get('token');
-  }
-  return token;
-}
-
-const AuthCallback: React.FC = () => {
+const AuthCallbackPage: React.FC = () => {
   const nav = useNavigate();
-  const [debug, setDebug] = useState<{ found: boolean; saved: boolean; tokenLen: number }>(
-    { found: false, saved: false, tokenLen: 0 }
-  );
+  const [debug, setDebug] = useState({ found: false, saved: false, tokenLen: 0 });
 
   useEffect(() => {
-    console.debug('[AuthCallback] location', { hash: window.location.hash, search: window.location.search });
+    // 1) #/auth/callback?token=...  (HashRouter 방식)
+    const hash = window.location.hash.replace(/^#/, ''); // "auth/callback?token=..." 또는 "?token=..."
+    const hashParams = new URLSearchParams(hash.includes('?') ? hash.split('?')[1] : hash);
 
-    const token = extractToken();
-    if (!token) {
-      console.warn('[AuthCallback] no token found in URL');
-      setDebug({ found: false, saved: false, tokenLen: 0 });
-      return;
+    // 2) /auth/callback?token=...   (BrowserRouter/쿼리스트링)
+    const searchParams = new URLSearchParams(window.location.search);
+
+    const token =
+      hashParams.get('token') ||
+      searchParams.get('token') ||
+      null;
+
+    const found = !!token;
+    let saved = false;
+
+    if (token) {
+      try {
+        setAuthToken(token);
+        saved = true;
+      } catch {}
     }
+    setDebug({ found, saved, tokenLen: token?.length || 0 });
 
-    try {
-      setAuthToken(token);
-      setDebug({ found: true, saved: true, tokenLen: token.length });
-      console.debug('[AuthCallback] token saved. redirecting to / ...');
-
-      // 잠깐 보여주고 홈으로
-      const t = setTimeout(() => nav('/', { replace: true }), 600);
-      return () => clearTimeout(t);
-    } catch (e) {
-      console.error('[AuthCallback] failed to save token', e);
-      setDebug({ found: true, saved: false, tokenLen: token.length });
-    }
+    // 홈으로 이동
+    const to = '/';
+    setTimeout(() => nav(to, { replace: true }), 400);
   }, [nav]);
 
   return (
-    <div style={{ padding: '2rem' }}>
-      <h2>Authenticating…</h2>
-      <pre style={{ background:'#f6f8fa', padding:'1rem', borderRadius:8, overflowX:'auto' }}>
-        {JSON.stringify(debug, null, 2)}
-      </pre>
+    <div style={{ padding: 24 }}>
+      <h3>Authenticating…</h3>
+      <pre>{JSON.stringify(debug, null, 2)}</pre>
       <p>브라우저 콘솔(F12)에서도 네트워크/콘솔 로그를 확인해 주세요.</p>
-      <button onClick={() => nav('/')}>홈으로</button>
     </div>
   );
 };
 
-export default AuthCallback;
+export default AuthCallbackPage;

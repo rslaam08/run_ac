@@ -47,23 +47,41 @@ router.get(
   passport.authenticate('google', { failureRedirect: '/' }),
   async (req, res) => {
     try {
-      const u = req.user as any;
-      const token = jwt.sign(
-        { seq: u.seq, name: u.name, isAdmin: u.isAdmin },
-        JWT_SECRET,
+      // 1) JWT 발급 (이미 구현돼 있다면 기존 코드 사용)
+      const me = req.user as any;
+      const payload = { seq: me.seq, name: me.name, isAdmin: !!me.isAdmin };
+      const token = require('jsonwebtoken').sign(
+        payload,
+        process.env.JWT_SECRET!,         // 반드시 설정되어 있어야 함
         { expiresIn: '7d' }
       );
 
-      const target = pickFrontendHome().replace(/\/$/, '');
-      const redirectUrl = `${target}/#/auth/callback?token=${encodeURIComponent(token)}`;
-      console.log('[auth] redirect →', redirectUrl);
-      return res.redirect(redirectUrl);
+      // 2) 보내줄 프론트 주소 결정
+      // 우선순위: ?origin= → 환경변수 CLIENT_URLS[0] → 기본값
+      const DEFAULT_FRONT = 'https://rslaam08.github.io/run_ac/';
+      const envFront =
+        (process.env.CLIENT_URLS || process.env.CLIENT_URL || '')
+          .split(',')
+          .map(s => s.trim())
+          .filter(Boolean)[0];
+      const queryFront = typeof req.query.origin === 'string' ? req.query.origin : null;
+
+      // 최종 기본 프론트
+      let frontBase = (queryFront || envFront || DEFAULT_FRONT).replace(/\/+$/, '') + '/';
+
+      // 3) HashRouter 기준의 콜백 경로로 리다이렉트
+      //    ex) https://.../run_ac/#/auth/callback?token=xxxx
+      const redirectUrl = `${frontBase}#/auth/callback?token=${encodeURIComponent(token)}`;
+
+      console.log('[OAuth] redirect →', redirectUrl.substring(0, 120) + '...');
+      return res.redirect(302, redirectUrl);
     } catch (e) {
-      console.error('[auth] google/callback error', e);
-      return res.status(500).send('OAuth callback error');
+      console.error('[OAuth] callback error:', e);
+      return res.redirect(302, '/');
     }
   }
 );
+
 
 // 3) 현재 로그인된 유저 (세션 OR JWT 둘 다 지원)
 router.get('/me', async (req, res) => {

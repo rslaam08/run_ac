@@ -1,93 +1,110 @@
+// backend/src/routes/auth.ts
 import express from 'express';
 import passport from 'passport';
 import jwt from 'jsonwebtoken';
+import User from '../models/User';
 
 const router = express.Router();
 
 const isProd = process.env.NODE_ENV === 'production';
+const JWT_SECRET = process.env.JWT_SECRET || '___FILL_ME_CHANGE_ME___';
 
-// 프론트 기본 URL (깃허브 페이지 경로 포함)
-const FRONTEND_BASE_URL =
-  (process.env.FRONTEND_BASE_URL || 'http://localhost:3000').replace(/\/$/, '');
+/** 프론트 도메인: CLIENT_URLS="https://rslaam08.github.io,http://localhost:3000" */
+const DEFAULT_CLIENTS = ['http://localhost:3000', 'https://rslaam08.github.io'];
+const CLIENT_URLS = (process.env.CLIENT_URLS || process.env.CLIENT_URL || '')
+  .split(',')
+  .map(s => s.trim())
+  .filter(Boolean);
+const CLIENTS = CLIENT_URLS.length ? CLIENT_URLS : DEFAULT_CLIENTS;
 
-// JWT 시크릿
-const JWT_SECRET = process.env.JWT_SECRET || '';
-if (!JWT_SECRET) {
-  console.warn('[Auth] WARNING: JWT_SECRET is not set.');
+function pickFrontendHome() {
+  const primary = CLIENTS[0] || 'http://localhost:3000';
+  // 깃헙 페이지는 서브패스(/run_ac/)가 있을 수 있음
+  // 필요시 환경변수 FRONTEND_PATH=/run_ac/ 로 별도 지정 가능
+  const FRONTEND_PATH = process.env.FRONTEND_PATH || '/run_ac/';
+  if (isProd && primary.includes('github.io')) {
+    return `${primary.replace(/\/$/, '')}${FRONTEND_PATH}`;
+  }
+  return primary; // 로컬
 }
 
-// 성공 리다이렉트 URL 생성 헬퍼
-function front(urlPath: string) {
-  // urlPath 예: '/#/auth/callback'
-  return `${FRONTEND_BASE_URL}${urlPath}`;
-}
-
-// (디버그용) 현재 설정 확인
-router.get('/debug', (_req, res) => {
+// ====== 디버그 ======
+router.get('/debug', (req, res) => {
   res.json({
+    CLIENTS,
+    redirectTarget: pickFrontendHome(),
     NODE_ENV: process.env.NODE_ENV,
-    FRONTEND_BASE_URL,
-    GOOGLE_CALLBACK_URL: process.env.GOOGLE_CALLBACK_URL,
+    hasSession: !!(req as any).isAuthenticated?.() && !!req.user,
   });
 });
 
 // 1) 구글 OAuth 시작
 router.get('/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
 
-// 2) 구글 OAuth 콜백
+// 2) 구글 OAuth 콜백 → JWT 발급 → 프론트로 리다이렉트(#token=...)
 router.get(
   '/google/callback',
   passport.authenticate('google', { failureRedirect: '/' }),
-  (req, res) => {
-    // 로그인 성공 → JWT 발급 후 프론트로 토큰 전달
+  async (req, res) => {
     try {
       const u = req.user as any;
-      if (!u) {
-        return res.redirect(front('/#/auth/callback?error=NO_USER'));
-      }
-
       const token = jwt.sign(
-        {
-          seq: u.seq,
-          name: u.name,
-          isAdmin: !!u.isAdmin,
-        },
+        { seq: u.seq, name: u.name, isAdmin: u.isAdmin },
         JWT_SECRET,
         { expiresIn: '7d' }
       );
 
-      // 깃허브 페이지 해시 라우팅으로 콜백
-      const redirectUrl = front(`/#/auth/callback?token=${encodeURIComponent(token)}`);
+      const target = pickFrontendHome().replace(/\/$/, '');
+      const redirectUrl = `${target}/#/auth/callback?token=${encodeURIComponent(token)}`;
+      console.log('[auth] redirect →', redirectUrl);
       return res.redirect(redirectUrl);
     } catch (e) {
-      console.error('[OAuth callback error]', e);
-      return res.redirect(front('/#/auth/callback?error=ISSUE_TOKEN'));
+      console.error('[auth] google/callback error', e);
+      return res.status(500).send('OAuth callback error');
     }
   }
 );
 
-// 3) 현재 로그인 유저(토큰 기반)
-router.get('/me', (req: any, res) => {
-  // JWT 인증 미들웨어를 전역으로 쓰지 않는 경우,
-  // 프록시 레이어에서 Authorization 헤더 검증을 이미 했다고 가정하거나
-  // 여기서 직접 파싱해도 됩니다. (프로젝트에 맞춰 유지)
-  if (req.user) {
-    const user = req.user as any;
-    return res.json({
-      seq: user.seq,
-      name: user.name,
-      intro: user.intro,
-      isAdmin: !!user.isAdmin,
-    });
+// 3) 현재 로그인된 유저 (세션 OR JWT 둘 다 지원)
+router.get('/me', async (req, res) => {
+  // (A) 세션 로그인?
+  if ((req as any).isAuthenticated?.() && req.user) {
+    const u = req.user as any;
+    return res.json({ seq: u.seq, name: u.name, intro: u.intro, isAdmin: u.isAdmin, via: 'session' });
   }
-  return res.status(401).json({ error: 'Not authenticated' });
+
+  // (B) JWT?
+  try {
+    const auth = req.get('authorization') || '';
+    const m = auth.match(/^Bearer\s+(.+)$/i);
+    if (!m) return res.status(401).json({ error: 'No auth' });
+
+    const payload = jwt.verify(m[1], JWT_SECRET) as any;
+    const u = await User.findOne({ seq: payload.seq }).lean();
+    if (!u) return res.status(401).json({ error: 'User not found' });
+
+    return res.json({ seq: u.seq, name: u.name, intro: u.intro, isAdmin: u.isAdmin, via: 'jwt' });
+  } catch (e: any) {
+    console.warn('[auth] /me jwt verify failed', e?.message);
+    return res.status(401).json({ error: 'Invalid token' });
+  }
 });
 
-// 4) 로그아웃 (선택)
-//   - JWT 방식에선 클라이언트가 localStorage에서 토큰을 지우면 사실상 로그아웃.
-//   - 서버가 블랙리스트를 운용하지 않는다면 여기서는 OK 반환 정도로 충분.
-router.post('/logout', (_req, res) => {
-  return res.json({ message: 'ok' });
+// 4) 로그아웃(세션 정리; JWT는 클라이언트가 버리면 끝)
+router.post('/logout', (req, res, next) => {
+  (req as any).logout?.((err: any) => {
+    if (err) return next(err);
+
+    req.session?.destroy((sessionErr) => {
+      const cookieOptions = isProd
+        ? { path: '/', httpOnly: true, sameSite: 'none' as const, secure: true }
+        : { path: '/', httpOnly: true, sameSite: 'lax'  as const, secure: false };
+
+      res.clearCookie('smsession', cookieOptions);
+      if (sessionErr) return res.status(500).json({ error: 'Logout failed' });
+      return res.json({ message: 'Logged out' });
+    });
+  });
 });
 
 export default router;

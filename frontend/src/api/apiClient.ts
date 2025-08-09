@@ -1,32 +1,89 @@
 // frontend/src/api/apiClient.ts
 import axios from 'axios';
 
-// 배포(깃허브 페이지)에서는 백엔드 고정 도메인으로 호출
-// 로컬 개발 시에는 localhost:4000
-const API_BASE =
-  process.env.NODE_ENV === 'production'
-    ? 'https://sshsrun-api.onrender.com'
-    : 'http://localhost:4000';
+const isProd = process.env.NODE_ENV === 'production';
+
+// 배포(깃허브 페이지): 백엔드가 다른 도메인(Render)
+const PROD_API_BASE = 'https://sshsrun-api.onrender.com';
+// 로컬 개발
+const DEV_API_BASE = 'http://localhost:4000';
+
+const base = isProd ? PROD_API_BASE : DEV_API_BASE;
 
 export const api = axios.create({
-  baseURL: `${API_BASE}/api`,
+  baseURL: `${base}/api`,
+  withCredentials: false, // JWT는 헤더로 보냄
 });
 
 export const authApi = axios.create({
-  baseURL: `${API_BASE}/auth`,
+  baseURL: `${base}/auth`,
+  withCredentials: false,
 });
 
-// JWT 토큰 자동 첨부 (localStorage에 저장된 토큰이 있으면 Authorization 헤더 추가)
-const attachToken = (config: any) => {
-  try {
-    const token = localStorage.getItem('authToken');
-    if (token) {
-      config.headers = config.headers || {};
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-  } catch {}
-  return config;
-};
+// ===== 토큰 보관/주입 헬퍼 =====
+const TOKEN_KEY = 'runac_jwt';
 
-api.interceptors.request.use(attachToken);
-authApi.interceptors.request.use(attachToken);
+export function getAuthToken(): string | null {
+  const t = localStorage.getItem(TOKEN_KEY);
+  console.debug('[apiClient] getAuthToken()', t ? `len=${t.length}` : 'null');
+  return t;
+}
+
+export function setAuthToken(token: string) {
+  console.debug('[apiClient] setAuthToken(len=', token?.length, ')');
+  localStorage.setItem(TOKEN_KEY, token);
+  // 인터셉터가 이미 동작하지만, 즉시 반영 위해 헤더도 세팅
+  api.defaults.headers.common.Authorization = `Bearer ${token}`;
+  authApi.defaults.headers.common.Authorization = `Bearer ${token}`;
+}
+
+export function clearAuthToken() {
+  console.debug('[apiClient] clearAuthToken()');
+  localStorage.removeItem(TOKEN_KEY);
+  delete api.defaults.headers.common.Authorization;
+  delete authApi.defaults.headers.common.Authorization;
+}
+
+// 요청시 자동 Authorization 주입 + 로깅
+api.interceptors.request.use((cfg) => {
+  const t = getAuthToken();
+  if (t) cfg.headers.Authorization = `Bearer ${t}`;
+  console.debug('[api] →', cfg.method?.toUpperCase(), cfg.url, { hasAuth: !!t });
+  return cfg;
+});
+authApi.interceptors.request.use((cfg) => {
+  const t = getAuthToken();
+  if (t) cfg.headers.Authorization = `Bearer ${t}`;
+  console.debug('[authApi] →', cfg.method?.toUpperCase(), cfg.url, { hasAuth: !!t });
+  return cfg;
+});
+
+// 응답 로깅(에러 포함)
+api.interceptors.response.use(
+  (res) => {
+    console.debug('[api] ←', res.status, res.config.url);
+    return res;
+  },
+  (err) => {
+    console.warn('[api] ✖', err?.response?.status, err?.config?.url, err?.response?.data);
+    throw err;
+  }
+);
+authApi.interceptors.response.use(
+  (res) => {
+    console.debug('[authApi] ←', res.status, res.config.url);
+    return res;
+  },
+  (err) => {
+    console.warn('[authApi] ✖', err?.response?.status, err?.config?.url, err?.response?.data);
+    throw err;
+  }
+);
+
+// 앱 시작 시 저장된 토큰을 기본 헤더에 반영
+const bootToken = getAuthToken();
+if (bootToken) {
+  api.defaults.headers.common.Authorization = `Bearer ${bootToken}`;
+  authApi.defaults.headers.common.Authorization = `Bearer ${bootToken}`;
+  console.debug('[apiClient] boot with token');
+}

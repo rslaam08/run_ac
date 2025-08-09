@@ -1,52 +1,61 @@
 import React, { useState, useEffect, FormEvent } from 'react';
 import { Link, Outlet, useNavigate } from 'react-router-dom';
 import './Layout.css';
-import { api, authApi } from '../api/apiClient';
+import { authApi, api, getAuthToken, clearAuthToken } from '../api/apiClient';
 
 type SimpleUser = { seq: number; name: string };
 
 const Header: React.FC = () => {
   const [loggedIn, setLoggedIn] = useState<boolean>(false);
   const [userSeq, setUserSeq]   = useState<number | null>(null);
+  const [whoami, setWhoami]     = useState<any>(null);
 
   const [searchTerm, setSearchTerm] = useState('');
   const [searchBusy, setSearchBusy] = useState(false);
-
   const navigate = useNavigate();
 
-  // 로그인 상태 확인: /auth/me (JWT로 확인)
-  useEffect(() => {
-    authApi.get('/me')
-      .then(res => {
-        setLoggedIn(true);
-        setUserSeq(res.data.seq);
-      })
-      .catch(() => {
-        setLoggedIn(false);
-        setUserSeq(null);
-      });
-  }, []);
-
-  // 로그인: 백엔드 도메인의 /auth/google 로, 리다이렉트 목적지 전달
-  const handleLogin = () => {
-    const redirect = `${window.location.origin}${window.location.pathname}#/auth/callback`;
-    // 예: https://rslaam08.github.io/run_ac/#/auth/callback
-    window.location.href =
-      `https://sshsrun-api.onrender.com/auth/google?redirect=${encodeURIComponent(redirect)}`;
-  };
-
-  // 로그아웃: 토큰 제거 + (선택) 서버 세션 정리
-  const handleLogout = () => {
-    try { localStorage.removeItem('authToken'); } catch {}
-    // 서버 세션도 함께 종료 시도 (실패해도 무시)
-    authApi.post('/logout').finally(() => {
+  // ===== 현재 로그인 상태 확인 =====
+  const refreshAuth = async () => {
+    try {
+      console.debug('[Header] refreshAuth() start. token?', !!getAuthToken());
+      const res = await authApi.get('/me'); // Authorization: Bearer 자동 첨부
+      console.debug('[Header] /auth/me ok', res.data);
+      setLoggedIn(true);
+      setUserSeq(res.data.seq);
+      setWhoami(res.data);
+    } catch (err: any) {
+      console.warn('[Header] /auth/me fail', err?.response?.status, err?.response?.data);
       setLoggedIn(false);
       setUserSeq(null);
-      navigate('/', { replace: true });
-    });
+      setWhoami(null);
+    }
   };
 
-  // 유저 검색: /api/user 전체를 받아서 클라이언트에서 매칭
+  useEffect(() => {
+    refreshAuth();
+  }, []);
+
+  const handleLogin = () => {
+    // 백엔드가 구글로 리다이렉트 → 로그인 성공 시 /auth/callback#token=...으로 돌아옴
+    const url = `${authApi.defaults.baseURL}/google`;
+    console.debug('[Header] go login:', url);
+    window.location.href = url!;
+  };
+
+  const handleLogout = async () => {
+    try {
+      console.debug('[Header] logout(): clear token + hit /auth/logout');
+      clearAuthToken(); // JWT 제거(프론트 관점에선 이걸로 충분)
+      await authApi.post('/logout'); // 백엔드 세션 정리(있다면)
+    } catch (e) {
+      console.warn('[Header] logout call failed (ignored)', e);
+    } finally {
+      await refreshAuth();
+      navigate('/', { replace: true });
+    }
+  };
+
+  // ===== 유저 검색 =====
   const handleSearch = async (e: FormEvent) => {
     e.preventDefault();
     const q = searchTerm.trim();
@@ -57,11 +66,9 @@ const Header: React.FC = () => {
       const res = await api.get<SimpleUser[]>('/user');
       const users = res.data;
 
-      // 1) 대소문자 무시 정확 일치
       const exact = users.find(u => u.name.toLowerCase() === q.toLowerCase());
       if (exact) return navigate(`/user/${exact.seq}`);
 
-      // 2) 부분 일치
       const partial = users.find(u => u.name.toLowerCase().includes(q.toLowerCase()));
       if (partial) return navigate(`/user/${partial.seq}`);
 
@@ -80,7 +87,6 @@ const Header: React.FC = () => {
         <Link to="/" className="logo">run.ac</Link>
 
         <div className="right-wrap">
-          {/* 버튼 그룹 */}
           <div className="button-group">
             <Link to="/ranking" className="nav-btn">랭킹</Link>
 
@@ -100,11 +106,9 @@ const Header: React.FC = () => {
               마이 페이지
             </button>
 
-            {/* 계산기 탭 */}
             <Link to="/calc" className="nav-btn">runbility 계산기</Link>
           </div>
 
-          {/* 유저 검색창 — 맨 오른쪽으로 */}
           <form className="user-search" onSubmit={handleSearch}>
             <input
               type="text"
@@ -118,6 +122,13 @@ const Header: React.FC = () => {
             </button>
           </form>
         </div>
+      </div>
+
+      {/* ====== 디버그 박스 (필요 없으면 지우세요) ====== */}
+      <div style={{padding:'6px 12px', background:'#111827', color:'#E5E7EB', fontSize:12}}>
+        <b>Auth debug</b> — token? {getAuthToken() ? 'yes' : 'no'} | loggedIn: {String(loggedIn)} | userSeq: {String(userSeq)}
+        {whoami && (<span> | {whoami.name} (#{whoami.seq})</span>)}
+        <button style={{marginLeft:8}} onClick={refreshAuth}>recheck</button>
       </div>
     </header>
   );

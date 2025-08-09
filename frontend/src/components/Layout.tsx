@@ -1,7 +1,7 @@
-// frontend/src/components/Layout.tsx
 import React, { useState, useEffect, FormEvent } from 'react';
 import { Link, Outlet, useNavigate } from 'react-router-dom';
 import './Layout.css';
+import { api, authApi } from '../api/apiClient';
 
 type SimpleUser = { seq: number; name: string };
 
@@ -14,18 +14,12 @@ const Header: React.FC = () => {
 
   const navigate = useNavigate();
 
+  // 로그인 상태 확인: /auth/me (JWT로 확인)
   useEffect(() => {
-    // 같은 오리진으로 배포되므로 절대 URL 대신 상대 경로 사용
-    fetch('/auth/me', { credentials: 'include' })
-      .then(async (res) => {
-        if (!res.ok) {
-          setLoggedIn(false);
-          setUserSeq(null);
-          return;
-        }
-        const data = await res.json();
+    authApi.get('/me')
+      .then(res => {
         setLoggedIn(true);
-        setUserSeq(data.seq);
+        setUserSeq(res.data.seq);
       })
       .catch(() => {
         setLoggedIn(false);
@@ -33,21 +27,26 @@ const Header: React.FC = () => {
       });
   }, []);
 
+  // 로그인: 백엔드 도메인의 /auth/google 로, 리다이렉트 목적지 전달
   const handleLogin = () => {
-    // 서버의 OAuth 시작 엔드포인트로 이동
-    window.location.href = '/auth/google';
+    const redirect = `${window.location.origin}${window.location.pathname}#/auth/callback`;
+    // 예: https://rslaam08.github.io/run_ac/#/auth/callback
+    window.location.href =
+      `https://sshsrun-api.onrender.com/auth/google?redirect=${encodeURIComponent(redirect)}`;
   };
 
+  // 로그아웃: 토큰 제거 + (선택) 서버 세션 정리
   const handleLogout = () => {
-    fetch('/auth/logout', { method: 'POST', credentials: 'include' })
-      .then(() => {
-        // 세션/쿠키 삭제 후 홈으로
-        navigate('/', { replace: true });
-      })
-      .catch(err => console.error('Logout failed', err));
+    try { localStorage.removeItem('authToken'); } catch {}
+    // 서버 세션도 함께 종료 시도 (실패해도 무시)
+    authApi.post('/logout').finally(() => {
+      setLoggedIn(false);
+      setUserSeq(null);
+      navigate('/', { replace: true });
+    });
   };
 
-  // 유저 검색: /api/user 전체 목록을 받아서 클라이언트에서 매칭
+  // 유저 검색: /api/user 전체를 받아서 클라이언트에서 매칭
   const handleSearch = async (e: FormEvent) => {
     e.preventDefault();
     const q = searchTerm.trim();
@@ -55,23 +54,16 @@ const Header: React.FC = () => {
 
     try {
       setSearchBusy(true);
-      const res = await fetch('/api/user', { credentials: 'include' });
-      if (!res.ok) throw new Error('failed to fetch users');
-      const users: SimpleUser[] = await res.json();
+      const res = await api.get<SimpleUser[]>('/user');
+      const users = res.data;
 
       // 1) 대소문자 무시 정확 일치
       const exact = users.find(u => u.name.toLowerCase() === q.toLowerCase());
-      if (exact) {
-        navigate(`/user/${exact.seq}`);
-        return;
-      }
+      if (exact) return navigate(`/user/${exact.seq}`);
 
       // 2) 부분 일치
       const partial = users.find(u => u.name.toLowerCase().includes(q.toLowerCase()));
-      if (partial) {
-        navigate(`/user/${partial.seq}`);
-        return;
-      }
+      if (partial) return navigate(`/user/${partial.seq}`);
 
       alert('해당 닉네임의 유저를 찾을 수 없습니다.');
     } catch (err) {
@@ -112,7 +104,7 @@ const Header: React.FC = () => {
             <Link to="/calc" className="nav-btn">runbility 계산기</Link>
           </div>
 
-          {/* 유저 검색창 — 맨 오른쪽 */}
+          {/* 유저 검색창 — 맨 오른쪽으로 */}
           <form className="user-search" onSubmit={handleSearch}>
             <input
               type="text"

@@ -1,3 +1,4 @@
+// backend/src/routes/auth.ts
 import express from 'express';
 import passport from 'passport';
 
@@ -5,18 +6,33 @@ const router = express.Router();
 
 const isProd = process.env.NODE_ENV === 'production';
 
-/** 로그인 후 리다이렉트할 홈(백엔드와 같은 도메인으로) */
-function backendHome() {
-  const base = (process.env.PUBLIC_API_URL || `http://localhost:${process.env.PORT || 4000}`).replace(/\/$/, '');
-  return `${base}/`;
+/** 프론트의 “완성된 홈 URL”을 환경변수로 직접 받습니다.
+ *  예) https://rslaam08.github.io/run_ac/
+ *  없으면 깃헙 페이지 패턴을 추정해서 만들어 봅니다.
+ */
+function getFrontendHome(): string {
+  const envHome = (process.env.FRONTEND_HOME || '').trim();
+  if (envHome) return envHome.replace(/\/?$/, '/'); // 끝에 슬래시 보장
+
+  // 백업 경로: CLIENT_URLS에서 첫 번째를 골라 github.io면 /run_ac/ 붙이기
+  const raw = (process.env.CLIENT_URLS || process.env.CLIENT_URL || '').split(',')
+    .map(s => s.trim()).filter(Boolean)[0] || 'http://localhost:3000';
+
+  if (isProd && /github\.io/i.test(raw)) {
+    return `${raw.replace(/\/$/, '')}/run_ac/`;
+  }
+  return raw.endsWith('/') ? raw : `${raw}/`;
 }
 
-// (선택) 디버그용
+const FRONTEND_HOME = getFrontendHome();
+
+// (선택) 디버깅용
 router.get('/debug', (_req, res) => {
   res.json({
-    NODE_ENV: process.env.NODE_ENV,
+    FRONTEND_HOME,
+    CLIENT_URLS: process.env.CLIENT_URLS || process.env.CLIENT_URL,
     GOOGLE_CALLBACK_URL: process.env.GOOGLE_CALLBACK_URL,
-    redirectTarget: backendHome()
+    NODE_ENV: process.env.NODE_ENV,
   });
 });
 
@@ -26,10 +42,12 @@ router.get('/google', passport.authenticate('google', { scope: ['profile', 'emai
 // 2) 구글 OAuth 콜백
 router.get(
   '/google/callback',
-  passport.authenticate('google', { failureRedirect: '/' }),
+  passport.authenticate('google', {
+    failureRedirect: FRONTEND_HOME, // 실패도 프론트로
+  }),
   (_req, res) => {
-    // 로그인 성공 후 백엔드가 서빙하는 프론트 홈으로
-    res.redirect(backendHome());
+    // 성공도 프론트로
+    res.redirect(FRONTEND_HOME);
   }
 );
 
@@ -53,10 +71,9 @@ router.post('/logout', (req, res, next) => {
     if (err) return next(err);
 
     req.session?.destroy(sessionErr => {
-      // 세션 쿠키 삭제 (서버 세션 설정과 동일한 sameSite/secure 로)
       const cookieOptions = isProd
-        ? { path: '/', httpOnly: true, sameSite: 'lax' as const, secure: true }
-        : { path: '/', httpOnly: true, sameSite: 'lax' as const, secure: false };
+        ? { path: '/', httpOnly: true, sameSite: 'none' as const, secure: true }
+        : { path: '/', httpOnly: true, sameSite: 'lax'  as const, secure: false };
 
       res.clearCookie('smsession', cookieOptions);
 

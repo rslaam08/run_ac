@@ -77,6 +77,14 @@ app.use('/auth',        authRouter);
 app.use('/api/user',    userRouter);
 app.use('/api/records', recordRouter);
 
+app.get('/', (_req, res) => {
+  res.json({
+    status: 'ok',
+    service: 'sshsrun-api',
+    time: new Date().toISOString(),
+  });
+});
+
 // 🔴 여기! Express 5에서는 catch-all에 "문자열 경로"를 쓰지 마세요.
 //    그냥 핸들러만 등록하면 모든 미매칭 요청을 잡습니다.
 app.use((req, res) => {

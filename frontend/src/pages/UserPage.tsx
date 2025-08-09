@@ -1,9 +1,7 @@
 // frontend/src/pages/UserPage.tsx
-
 import React, { useEffect, useState, ChangeEvent, FormEvent } from 'react';
 import { useParams } from 'react-router-dom';
-import { api } from '../api/apiClient';
-import { authApi } from '../api/authApi';
+import { api, authApi, getAuthToken } from '../api/apiClient';
 import { getRunbility } from '../utils/runbility';
 import './UserPage.css';
 
@@ -19,7 +17,9 @@ interface IRecord {
   distance: number;
   date: string;
 }
+
 const PAGE_SIZE = 10;
+
 const getRunClass = (val: number) => {
   if (val >= 15000) return 'run-gradient2';
   if (val >= 10000) return 'run-gradient1';
@@ -30,7 +30,7 @@ const getRunClass = (val: number) => {
   if (val >= 2000)  return 'run-silver';
   if (val >= 1000)  return 'run-bronze';
   return '';
-}
+};
 
 // 평균 Top 5 runbility에 따른 칭호(title) 매핑 함수
 const getRunTitle = (avg: number): string => {
@@ -63,6 +63,19 @@ const getRunTitle = (avg: number): string => {
   return 'Unrated';
 };
 
+// JWT payload(= seq) 빠르게 읽어오기 (업로드 폼 표시용)
+function getTokenPayload(): null | { seq?: number; name?: string; isAdmin?: boolean } {
+  try {
+    const t = getAuthToken();
+    if (!t) return null;
+    const [, payload] = t.split('.');
+    const json = atob(payload.replace(/-/g, '+').replace(/_/g, '/'));
+    return JSON.parse(json);
+  } catch {
+    return null;
+  }
+}
+
 const UserPage: React.FC = () => {
   const { seq } = useParams<{ seq: string }>();
   const userSeq = Number(seq);
@@ -81,10 +94,11 @@ const UserPage: React.FC = () => {
   const [dateInput, setDateInput] = useState(() => new Date().toISOString().slice(0, 10));
   const [fileInput, setFileInput] = useState<File | null>(null);
 
-  // (iv) 날짜 제한을 위한 min/max 문자열 (오늘 ~ 7일 전)
+  // 날짜 제한(오늘 ~ 7일 전)
   const todayIso = new Date().toISOString().slice(0, 10);
   const weekAgoIso = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
 
+  // 유저/기록 로드
   useEffect(() => {
     if (!seq) return;
     api.get<IUser>(`/user/${userSeq}`)
@@ -95,10 +109,16 @@ const UserPage: React.FC = () => {
       .catch(() => console.error('기록 조회 실패'));
   }, [userSeq, seq]);
 
+  // 현재 로그인 사용자 seq 세팅 (토큰 → /auth/me 순서)
   useEffect(() => {
+    const p = getTokenPayload();
+    if (p?.seq) setCurrentSeq(p.seq);
+
     authApi.get<{ seq: number }>('/me')
       .then(res => setCurrentSeq(res.data.seq))
-      .catch(() => setCurrentSeq(null));
+      .catch(() => {
+        if (!p?.seq) setCurrentSeq(null);
+      });
   }, []);
 
   const startEdit = () => {
@@ -114,7 +134,7 @@ const UserPage: React.FC = () => {
       .catch(err => console.error('소개 수정 실패', err));
   };
 
-  // HH:MM:SS -> 총 초수 파서
+  // HH:MM:SS -> 총 초수
   const parseHmsToSeconds = (hms: string): number | null => {
     const m = hms.trim().match(/^(\d{1,2}):([0-5]\d):([0-5]\d)$/);
     if (!m) return null;
@@ -127,7 +147,7 @@ const UserPage: React.FC = () => {
   const handleUpload = async (e: FormEvent) => {
     e.preventDefault();
 
-    // (ii) 거리 검증: 0.5 ~ 10
+    // 거리: 0.5 ~ 10
     const distance = Number(distInput);
     if (Number.isNaN(distance)) {
       alert('거리를 숫자로 입력하세요.');
@@ -145,14 +165,14 @@ const UserPage: React.FC = () => {
       return;
     }
 
-    // (iii) 페이스(초/km) 검증: 180 ~ 420
-    const paceSecPerKm = timeSec / distance; // 초/km
+    // 페이스: 180 ~ 420초/1km
+    const paceSecPerKm = timeSec / distance;
     if (paceSecPerKm < 180 || paceSecPerKm > 420) {
       alert('1km 페이스가 180초(3:00) 이상, 420초(7:00) 이하인 기록만 업로드할 수 있습니다.');
       return;
     }
 
-    // (iv) 날짜 검증: 오늘 ~ 7일 전
+    // 날짜: 오늘 ~ 7일 전
     if (!dateInput) {
       alert('날짜를 선택하세요.');
       return;
@@ -176,25 +196,32 @@ const UserPage: React.FC = () => {
     try {
       await api.post('/records', formData);
       alert('승인 대기 중인 기록이 등록되었습니다.');
-      setTimeInput('00:00:00'); setDistInput('0'); setDateInput(new Date().toISOString().slice(0,10)); setFileInput(null);
+      setTimeInput('00:00:00');
+      setDistInput('0');
+      setDateInput(new Date().toISOString().slice(0,10));
+      setFileInput(null);
       const res = await api.get<IRecord[]>(`/records/user/${userSeq}`);
       setRecords(res.data);
     } catch (err: any) {
-      console.error('업로드 실패:', err.response?.data || err);
+      console.error('업로드 실패:', err?.response?.data || err);
       alert('업로드 중 오류가 발생했습니다.');
     }
   };
 
   if (!user) return <div className="loading">로딩 중…</div>;
 
-  // runbility 계산 및 정렬
-  const recordsWithRun = records.map(r => ({ ...r, runbility: getRunbility(r.timeSec, r.distance) }));
+  // runbility 계산 및 정렬/페이지
+  const recordsWithRun = records.map(r => ({
+    ...r,
+    runbility: getRunbility(r.timeSec, r.distance)
+  }));
   const top5Sum = recordsWithRun
     .map(r => r.runbility)
     .sort((a,b) => b - a)
     .slice(0,5)
     .reduce((sum,v) => sum + v, 0);
   const top5Avg = top5Sum / 5;
+
   const sortedRecords = [...recordsWithRun].sort((a,b) =>
     sortBy === 'date'
       ? new Date(b.date).getTime() - new Date(a.date).getTime()
@@ -222,11 +249,13 @@ const UserPage: React.FC = () => {
           className={getRunClass(top5Avg)}
           style={{marginRight: '0.5rem', fontWeight: 'bold', fontSize: '0.7em'}}
         >
-        {getRunTitle(top5Avg)}
+          {getRunTitle(top5Avg)}
         </span>
         {user.name}
       </h1>
+
       <small className="user-seq">id: {user.seq}</small>
+
       <div className="intro-card">
         {!editing && <p>{user.intro || '소개가 없습니다.'}</p>}
         {editing && (
@@ -257,19 +286,21 @@ const UserPage: React.FC = () => {
       </div>
 
       <div className="records-section">
-        <div className="mt-4 font-semibold">Runbility rating:{' '}           
+        <div className="mt-4 font-semibold">Runbility rating:{' '}
           <span className={getRunClass(top5Avg)}>
             {top5Avg.toFixed(2)}
           </span>
         </div>
         <div
           style={{
-                  fontSize: '0.875rem',
-                  color:     '#6B7280',
-                  marginTop: '1rem',
-                }}
-        >*rating은 상위 5개 Runbility의 평균입니다.
+            fontSize: '0.875rem',
+            color:     '#6B7280',
+            marginTop: '1rem',
+          }}
+        >
+          *rating은 상위 5개 Runbility의 평균입니다.
         </div>
+
         <table className="records-table">
           <thead>
             <tr>
@@ -284,28 +315,29 @@ const UserPage: React.FC = () => {
                 <td>{rec.distance.toFixed(2)}</td>
                 <td>{calcPace(rec.timeSec, rec.distance)}</td>
                 <td className={`px-4 py-2 ${getRunClass(rec.runbility)}`}>
-                {rec.runbility.toFixed(2)}
+                  {rec.runbility.toFixed(2)}
                 </td>
               </tr>
             ))}
           </tbody>
-          {/* ——— 페이지 네비게이션 ——— */}
-          <div className="pager">
-            <button
-                onClick={() => setPage(p => Math.max(0, p - 1))}
-              disabled={page === 0}
-            >
-              이전
-            </button>
-            <button
-              onClick={() => setPage(p => p + 1)}
-              disabled={(page + 1) * PAGE_SIZE >= sortedRecords.length}
-            >
-              다음
-            </button>
-          </div>
-          {/* —————————————————————— */}
         </table>
+
+        {/* ——— 페이지 네비게이션 (table 밖으로 이동) ——— */}
+        <div className="pager" style={{ marginTop: '0.75rem', display: 'flex', gap: '0.5rem' }}>
+          <button
+            onClick={() => setPage(p => Math.max(0, p - 1))}
+            disabled={page === 0}
+          >
+            이전
+          </button>
+          <button
+            onClick={() => setPage(p => p + 1)}
+            disabled={(page + 1) * PAGE_SIZE >= sortedRecords.length}
+          >
+            다음
+          </button>
+        </div>
+        {/* ———————————————————————————————— */}
       </div>
 
       {currentSeq === user.seq && (
@@ -320,6 +352,7 @@ const UserPage: React.FC = () => {
               placeholder="HH:MM:SS"
               pattern="^\d{1,2}:[0-5]\d:[0-5]\d$"
               title="예: 00:45:30"
+              required
             />
           </div>
           <div>
@@ -331,6 +364,7 @@ const UserPage: React.FC = () => {
               max={10}
               value={distInput}
               onChange={e=>setDistInput(e.target.value)}
+              required
             />
           </div>
           <div>
@@ -339,13 +373,19 @@ const UserPage: React.FC = () => {
               type="date"
               value={dateInput}
               onChange={e=>setDateInput(e.target.value)}
-              min={weekAgoIso}   // (iv) 최소: 7일 전
-              max={todayIso}     // (iv) 최대: 오늘
+              min={weekAgoIso}
+              max={todayIso}
+              required
             />
           </div>
           <div>
             <label><br/>이미지</label>
-            <input type="file" accept="image/*" onChange={e=>setFileInput(e.target.files?.[0]||null)} />
+            <input
+              type="file"
+              accept="image/*"
+              onChange={e=>setFileInput(e.target.files?.[0]||null)}
+              required
+            />
           </div>
           <br/>
           <button type="submit">업로드</button>

@@ -3,7 +3,7 @@ import axios from 'axios';
 
 const isProd = process.env.NODE_ENV === 'production';
 
-// 배포(깃허브 페이지): 백엔드가 다른 도메인(Render)
+// 배포(깃허브 페이지): 백엔드(Render) 도메인
 const PROD_API_BASE = 'https://sshsrun-api.onrender.com';
 // 로컬 개발
 const DEV_API_BASE = 'http://localhost:4000';
@@ -12,7 +12,8 @@ const base = isProd ? PROD_API_BASE : DEV_API_BASE;
 
 export const api = axios.create({
   baseURL: `${base}/api`,
-  withCredentials: false, // JWT는 헤더로 보냄
+  // JWT를 Authorization 헤더로 보내므로 withCredentials 불필요
+  withCredentials: false,
 });
 
 export const authApi = axios.create({
@@ -32,7 +33,6 @@ export function getAuthToken(): string | null {
 export function setAuthToken(token: string) {
   console.debug('[apiClient] setAuthToken(len=', token?.length, ')');
   localStorage.setItem(TOKEN_KEY, token);
-  // 인터셉터가 이미 동작하지만, 즉시 반영 위해 헤더도 세팅
   api.defaults.headers.common.Authorization = `Bearer ${token}`;
   authApi.defaults.headers.common.Authorization = `Bearer ${token}`;
 }
@@ -44,7 +44,7 @@ export function clearAuthToken() {
   delete authApi.defaults.headers.common.Authorization;
 }
 
-// 요청시 자동 Authorization 주입 + 로깅
+// 요청 인터셉터: Authorization 자동 첨부 + 로깅
 api.interceptors.request.use((cfg) => {
   const t = getAuthToken();
   if (t) cfg.headers.Authorization = `Bearer ${t}`;
@@ -58,7 +58,7 @@ authApi.interceptors.request.use((cfg) => {
   return cfg;
 });
 
-// 응답 로깅(에러 포함)
+// 응답 로깅
 api.interceptors.response.use(
   (res) => {
     console.debug('[api] ←', res.status, res.config.url);

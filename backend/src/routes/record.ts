@@ -10,19 +10,18 @@ const router = express.Router();
 
 /** 로그인 필요 미들웨어 */
 function ensureAuth(req: express.Request, res: express.Response, next: express.NextFunction) {
-  // passport가 붙이는 isAuthenticated가 없을 수도 있으니 안전하게 체크
   const ok = (req as any).isAuthenticated?.() ?? false;
   if (ok) return next();
   return res.status(401).json({ error: 'Unauthorized' });
 }
 
-/** 업로드 디렉터리 준비 */
-const uploadDir = path.join(__dirname, '../../uploads');
-if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
+/** 업로드 디렉터리 (server.ts와 반드시 동일 경로 사용) */
+const UPLOAD_ROOT = path.resolve(__dirname, '..', 'uploads');
+if (!fs.existsSync(UPLOAD_ROOT)) fs.mkdirSync(UPLOAD_ROOT, { recursive: true });
 
 /** Multer 설정 (이미지 전용 / 50MB 제한) */
 const storage = multer.diskStorage({
-  destination: (_req, _file, cb) => cb(null, uploadDir),
+  destination: (_req, _file, cb) => cb(null, UPLOAD_ROOT),
   filename: (_req, file, cb) => {
     const unique = Date.now() + '-' + Math.round(Math.random() * 1e9);
     const ext = path.extname(file.originalname);
@@ -109,14 +108,12 @@ router.post('/', ensureAuth, upload.single('image'), async (req, res) => {
     }
 
     // 절대 URL 생성
-    // - Render에선 PUBLIC_API_URL을 반드시 넣어두는 걸 추천
-    // - 없으면 현재 요청의 host를 사용 (proxy trust 설정 가정)
     const base = (
       process.env.PUBLIC_API_URL ||
       `${req.protocol}://${req.get('host')}`
     ).replace(/\/$/, ''); // 끝 슬래시 제거
 
-    const filename = req.file.filename; // 확실한 파일명
+    const filename = req.file.filename; // 저장된 파일명
     const imageUrl = `${base}/uploads/${filename}`;
 
     // 저장 (승인 대기)

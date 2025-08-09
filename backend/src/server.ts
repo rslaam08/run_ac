@@ -33,7 +33,7 @@ const ALLOWED_ORIGINS = CLIENT_URLS.length ? CLIENT_URLS : DEFAULT_ORIGINS;
 
 // 퍼블릭 API URL(이미지 URL 만들 때 사용)
 // 예: https://sshsrun-api.onrender.com
-const PUBLIC_API_URL = process.env.PUBLIC_API_URL || `http://localhost:${PORT}`;
+const PUBLIC_API_URL = (process.env.PUBLIC_API_URL || `http://localhost:${PORT}`).replace(/\/$/, '');
 
 // Mongo 연결 문자열 (MONGODB_URI 우선)
 const MONGO = process.env.MONGODB_URI || process.env.MONGO_URI;
@@ -53,8 +53,7 @@ app.set('trust proxy', 1);
 // CORS: 여러 오리진 허용 + 쿠키 전송
 app.use(cors({
   origin(origin, cb) {
-    // 모바일 앱/서버 간 통신 등 origin이 없는 경우 허용
-    if (!origin) return cb(null, true);
+    if (!origin) return cb(null, true);              // 서버-서버/툴 호출 허용
     if (ALLOWED_ORIGINS.includes(origin)) return cb(null, true);
     return cb(new Error(`CORS blocked for origin: ${origin}`));
   },
@@ -64,8 +63,9 @@ app.use(cors({
 // JSON 파서
 app.use(express.json());
 
-// 업로드된 이미지 static 서빙 (로컬 디스크 사용 시)
-app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+// 업로드된 이미지 static 서빙 (record.ts와 반드시 동일 경로)
+const UPLOAD_ROOT = path.resolve(__dirname, '..', 'uploads');
+app.use('/uploads', express.static(UPLOAD_ROOT));
 
 // 세션 (프로덕션: MongoStore 사용 + 크로스사이트 쿠키 세팅)
 app.use(session({
@@ -140,5 +140,5 @@ app.use((
  * 서버 시작
  * ========================= */
 app.listen(PORT, () => {
-  console.log(`🚀 Server running on ${PUBLIC_API_URL.replace(/\/$/, '')}`);
+  console.log(`🚀 Server running on ${PUBLIC_API_URL}`);
 });

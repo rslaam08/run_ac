@@ -47,33 +47,42 @@ router.get(
   passport.authenticate('google', { failureRedirect: '/' }),
   async (req, res) => {
     try {
-      // 1) JWT 발급 (이미 구현돼 있다면 기존 코드 사용)
       const me = req.user as any;
       const payload = { seq: me.seq, name: me.name, isAdmin: !!me.isAdmin };
       const token = require('jsonwebtoken').sign(
         payload,
-        process.env.JWT_SECRET!,         // 반드시 설정되어 있어야 함
+        process.env.JWT_SECRET!,     // 반드시 설정 필요
         { expiresIn: '7d' }
       );
 
-      // 2) 보내줄 프론트 주소 결정
-      // 우선순위: ?origin= → 환경변수 CLIENT_URLS[0] → 기본값
+      // 1) 기본/환경/쿼리 순으로 후보 구성
       const DEFAULT_FRONT = 'https://rslaam08.github.io/run_ac/';
       const envFront =
         (process.env.CLIENT_URLS || process.env.CLIENT_URL || '')
           .split(',')
           .map(s => s.trim())
-          .filter(Boolean)[0];
-      const queryFront = typeof req.query.origin === 'string' ? req.query.origin : null;
+          .filter(Boolean)[0] || '';
+      const queryFront = typeof req.query.origin === 'string' ? req.query.origin : '';
 
-      // 최종 기본 프론트
-      let frontBase = (queryFront || envFront || DEFAULT_FRONT).replace(/\/+$/, '') + '/';
+      // 2) 우선순위 적용
+      let frontBase = (queryFront || envFront || DEFAULT_FRONT).replace(/\/+$/, '');
 
-      // 3) HashRouter 기준의 콜백 경로로 리다이렉트
-      //    ex) https://.../run_ac/#/auth/callback?token=xxxx
+      // 3) GitHub Pages 보정: github.io인데 /run_ac 없으면 붙여주기
+      if (frontBase.includes('github.io') && !/\/run_ac(\/|$)/.test(frontBase)) {
+        frontBase = frontBase + '/run_ac';
+      }
+
+      // 4) 최종 슬래시 하나 정리
+      frontBase = frontBase.replace(/\/+$/, '') + '/';
+
       const redirectUrl = `${frontBase}#/auth/callback?token=${encodeURIComponent(token)}`;
 
-      console.log('[OAuth] redirect →', redirectUrl.substring(0, 120) + '...');
+      // 디버깅 로그
+      console.log('[OAuth] envFront =', envFront);
+      console.log('[OAuth] queryFront =', queryFront);
+      console.log('[OAuth] final frontBase =', frontBase);
+      console.log('[OAuth] redirect →', redirectUrl.substring(0, 160) + '...');
+
       return res.redirect(302, redirectUrl);
     } catch (e) {
       console.error('[OAuth] callback error:', e);
@@ -81,6 +90,7 @@ router.get(
     }
   }
 );
+
 
 
 // 3) 현재 로그인된 유저 (세션 OR JWT 둘 다 지원)

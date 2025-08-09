@@ -1,0 +1,114 @@
+/* 전체 레이아웃 */
+.layout {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background: #F9FAFB;
+}
+
+/* Header */
+.header {
+  background-color: #4F46E5;
+  color: white;
+  padding: 1rem 1.5rem;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+/* 로고와 우측 영역 배치 */
+.header-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* 좌측 로고 */
+.logo {
+  font-size: 1.25rem;
+  font-weight: bold;
+  margin-right: 1rem; /* 로고와 우측 공백 */
+  color: white;
+  text-decoration: none;
+}
+
+/* 우측: 버튼 그룹 + 검색 묶음 */
+.right-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;            /* 그룹들 사이 간격 */
+  flex: 1;                 /* 오른쪽 영역이 남는 공간 사용 */
+}
+
+/* 버튼 그룹(랭킹/로그인/마이페이지/계산기) */
+.button-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* 공통 버튼 스타일 (글자 크기 통일) */
+.nav-btn,
+.auth-btn,
+.mypage-btn {
+  background: white;
+  color: #4F46E5;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 9999px;
+  cursor: pointer;
+  font-weight: 500;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.95rem;      /* ← 버튼 글자 크기 통일 */
+}
+
+.nav-btn:hover,
+.auth-btn:hover,
+.mypage-btn:hover {
+  background: #f0f0f0;
+}
+
+/* 검색 폼 — 맨 오른쪽 정렬 */
+.user-search {
+  margin-left: auto;       /* ← 맨 오른쪽으로 밀기 */
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.user-search input {
+  padding: 0.4rem 0.6rem;
+  border-radius: 9999px;
+  border: none;
+  outline: none;
+  min-width: 200px;
+  font-size: 0.95rem;      /* 버튼과 글자 크기 맞춤 */
+}
+
+.user-search button {
+  background: white;
+  color: #4F46E5;
+  border: none;
+  padding: 0.4rem 0.9rem;
+  border-radius: 9999px;
+  cursor: pointer;
+  font-weight: 500;
+  font-size: 0.95rem;      /* 버튼과 글자 크기 맞춤 */
+}
+
+.user-search button:disabled {
+  opacity: 0.7;
+  cursor: default;
+}
+.user-search button:hover:not(:disabled) {
+  background: #f0f0f0;
+}
+
+/* 메인 컨테이너 */
+.container {
+  flex: 1;
+  max-width: 1024px;
+  margin: 0 auto;
+  padding: 1rem;
+}

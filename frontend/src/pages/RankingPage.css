@@ -1,0 +1,118 @@
+/* frontend/src/pages/RankingPage.css */
+
+.ranking-page {
+  max-width: 800px;
+  margin: 2rem auto;
+  padding: 0 1rem;
+}
+
+.ranking-section {
+  background: #fff;
+  border-radius: 1rem;
+  padding: 1rem 1.5rem;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+  margin-bottom: 2rem;
+}
+
+.ranking-section h2 {
+  font-size: 1.25rem;
+  margin-bottom: 1rem;
+  color: #333;
+}
+
+.ranking-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.ranking-table th,
+.ranking-table td {
+  padding: 0.75rem;
+  border-bottom: 1px solid #e5e7eb;
+  text-align: center;
+}
+
+.ranking-table thead th {
+  background: #f3f4f6;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.ranking-table tr:nth-child(even) {
+  background: #fafafa;
+}
+
+.ranking-table tr:hover {
+  background: #f0f4f8;
+}
+/* 페이지 네비게이터 */
+.pager {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+.pager button {
+  padding: 0.25rem 0.75rem;
+  border: 1px solid #CBD5E0;    /* gray-300 */
+  background: white;
+  border-radius: 0.375rem;
+  cursor: pointer;
+}
+.pager button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Bronze: 1,000 ~ 2,000 */
+.run-bronze {
+  color: #cd7f32;
+}
+
+/* Silver: 2,000 ~ 3,000 */
+.run-silver {
+  color: #c0c0c0;
+}
+
+/* Gold: 3,000 ~ 4,000 */
+.run-gold {
+  color: #f5df62;
+}
+
+/* Platinum (light green): 4,000 ~ 5,500 */
+.run-platinum {
+  color: #9fd787;
+}
+
+/* Diamond (sky blue): 5,500 ~ 7,500 */
+.run-diamond {
+  color: #87ceeb;
+}
+
+/* Ruby (magenta): 7,500 ~ 10,000 */
+.run-ruby {
+  color: #e61565;
+}
+
+/* Gradient 10,000~15,000: skyblue → magenta */
+.run-gradient1 {
+  background: linear-gradient(to top right, #87ceeb, #d43e78);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  font-weight: bold;
+}
+
+/* Gradient 15,000~: dark gray → light gray */
+.run-gradient2 {
+  background: linear-gradient(to top right, #555555, #b9b7b7);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  font-weight: bold;
+}
+
+
+/* 4) 10000 초과는 볼드 */
+.rating-bold {
+  font-weight: bold;
+}
+

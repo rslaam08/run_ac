@@ -1,0 +1,56 @@
+/* frontend/src/styles/global.css */
+
+/* 1) 리셋/베이스 스타일 */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: 'Inter', sans-serif;
+  background-color: #F9FAFB;
+  color: #333;
+  line-height: 1.5;
+}
+
+a {
+  color: #4F46E5;
+  text-decoration: none;
+}
+a:hover {
+  text-decoration: underline;
+}
+
+/* 2) 컨테이너 */
+.container {
+  max-width: 1024px;
+  margin: 0 auto;
+  padding: 1rem;
+}
+
+/* 3) 헤더 */
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: #4F46E5;
+  color: white;
+  padding: 1rem;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+.header .logo {
+  font-size: 1.25rem;
+  font-weight: bold;
+}
+.header .login-btn {
+  background: white;
+  color: #4F46E5;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 9999px;
+  cursor: pointer;
+}
+.header .login-btn:hover {
+  background: #f0f0f0;
+}

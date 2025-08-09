@@ -14,38 +14,32 @@ const Header: React.FC = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    fetch('https://sshsrun-api.onrender.com/auth/me', { credentials: 'include' })
-      .then(res => {
-        if (res.ok) {
-          res.json().then(data => {
-            setLoggedIn(true);
-            setUserSeq(data.seq);
-          });
-        } else {
-          setLoggedIn(false);
-          setUserSeq(null);
-        }
-      })
-      .catch(() => {
+  // 같은 오리진으로 배포되므로 상대 경로 사용
+  fetch('/auth/me', { credentials: 'include' })
+    .then(res => {
+      if (res.ok) {
+        res.json().then(data => {
+          setLoggedIn(true);
+          setUserSeq(data.seq);
+        });
+      } else {
         setLoggedIn(false);
         setUserSeq(null);
-      });
+      }
+    })
+    .catch(() => {
+      setLoggedIn(false);
+      setUserSeq(null);
+    });
   }, []);
 
   const handleLogin = () => {
-    window.location.href = 'https://sshsrun-api.onrender.com/auth/google';
+    window.location.href = '/auth/google';
   };
 
   const handleLogout = () => {
-    fetch('https://sshsrun-api.onrender.com/auth/logout', {
-      method: 'POST',
-      credentials: 'include'
-    })
-      .then(() => {
-        // 해시 라우터 환경에 맞게 SPA 내 네비게이션
-        navigate('/');
-        window.location.reload();
-      })
+    fetch('/auth/logout', { method: 'POST', credentials: 'include' })
+      .then(() => (window.location.href = '/'))
       .catch(err => console.error('Logout failed', err));
   };
 
@@ -57,7 +51,7 @@ const Header: React.FC = () => {
 
     try {
       setSearchBusy(true);
-      const res = await fetch('https://sshsrun-api.onrender.com/api/user');
+      const res = await fetch('/api/user');
       if (!res.ok) throw new Error('failed to fetch users');
       const users: SimpleUser[] = await res.json();
 

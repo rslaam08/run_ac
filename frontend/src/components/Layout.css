@@ -112,3 +112,82 @@
   margin: 0 auto;
   padding: 1rem;
 }
+
+/* ===== 기존 스타일은 그대로 두고, 아래 "모바일 대응"만 추가 ===== */
+
+/* 버튼/링크가 한 줄로 깨지지 않게 */
+.nav-btn,
+.auth-btn,
+.mypage-btn {
+  white-space: nowrap;          /* ← 글자 줄바꿈 금지 */
+  min-width: max-content;       /* 내용만큼 너비 확보 */
+}
+
+/* 검색 버튼/인풋도 줄바꿈 방지 */
+.user-search input,
+.user-search button {
+  white-space: nowrap;
+  min-width: 0;                 /* 입력창은 미디어쿼리에서 폭을 따로 조절 */
+}
+
+/* ------------------ 모바일 대응 ------------------ */
+@media (max-width: 520px) {
+  .header-content {
+    flex-direction: column;     /* 로고 위, 기능 아래로 2단 배치 */
+    align-items: stretch;
+    gap: 0.5rem;
+  }
+
+  .right-wrap {
+    width: 100%;
+    gap: 0.5rem;
+    flex-direction: column;     /* 버튼그룹, 검색창을 세로로 쌓기 */
+    align-items: stretch;
+  }
+
+  /* 버튼 그룹은 좌우 스크롤 허용(넘칠 때) */
+  .button-group {
+    display: flex;
+    gap: 0.4rem;
+    overflow-x: auto;           /* 가로 스크롤 */
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 0.25rem;    /* 스크롤 바와 겹치지 않게 여백 */
+  }
+  .button-group::-webkit-scrollbar { display: none; } /* iOS에서 스크롤바 숨김 */
+
+  /* 버튼 크기 약간 축소 */
+  .nav-btn,
+  .auth-btn,
+  .mypage-btn {
+    font-size: 0.9rem;
+    padding: 0.45rem 0.8rem;
+  }
+
+  /* 검색 영역은 한 줄로 보이도록 */
+  .user-search {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+  .user-search input {
+    flex: 1 1 auto;             /* 남는 공간을 입력창이 가져가게 */
+    min-width: 120px;           /* 너무 작아지지 않게 최소폭 */
+  }
+  .user-search button {
+    flex: 0 0 auto;
+    padding: 0.45rem 0.8rem;
+    font-size: 0.9rem;
+  }
+}
+
+/* 약간 더 작은 화면 대응(선택) */
+@media (max-width: 360px) {
+  .nav-btn,
+  .auth-btn,
+  .mypage-btn {
+    font-size: 0.85rem;
+    padding: 0.4rem 0.7rem;
+  }
+  .user-search input { min-width: 100px; }
+}

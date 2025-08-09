@@ -1,54 +1,49 @@
 /* 전역: 수평 넘침 방지 + 대칭 스크롤바 */
 html, body {
-  overflow-x: hidden;
+  overflow-x: hidden;          /* ← 우측 흰 띠/가로 스크롤 방지 */
   margin: 0;
   scrollbar-gutter: stable both-edges;
 }
-/* 보더/패딩 계산 일관화 */
+.header-content {
+  align-items: flex-start;   /* ← 세로축 상단 정렬 */
+}
+
+/* 권장: 보더/패딩 계산 일관화 */
 *, *::before, *::after { box-sizing: border-box; }
 
+
 :root{
-  /* 페이지 공통 최대폭 */
+  /* 페이지 공통 최대폭: 데스크탑에서도 과하지 않게 줄임 */
   --page-max: clamp(320px, 92vw, 620px);
-  --side-pad: 1rem;
+  --side-pad: 1rem;            /* 헤더/본문 좌우 패딩 공통값 */
 }
 
 /* 전체 레이아웃 */
-.layout{ display:flex; flex-direction:column; min-height:100vh; background:#F9FAFB; }
+.layout{
+  display:flex; flex-direction:column; min-height:100vh; background:#F9FAFB;
+}
 
-/* Header(보라 바는 항상 화면 전체 폭) */
-.header{ background:#4F46E5; color:#fff; padding:0; box-shadow:0 2px 4px rgba(0,0,0,.1); }
+/* Header */
+.header{
+  background:#4F46E5; color:#fff;
+  padding:0;
+  box-shadow:0 2px 4px rgba(0,0,0,.1);
+}
 
-/* 헤더 컨테이너: PC에서 가운데 정렬, 2행 구성을 위한 래핑 허용 */
+/* 헤더 안의 실제 컨텐츠 폭 = 본문과 동일 */
 .header-content{
-  width:100%;
-  max-width:var(--page-max);
-  margin:0 auto;
-  padding:.75rem var(--side-pad);
-  display:flex;
-  flex-wrap:wrap;              /* 2행을 만들기 위해 래핑 */
-  justify-content:center;      /* 가로 가운데 정렬 */
-  align-items:center;          /* 세로 기준은 중앙 */
-  gap:.6rem .6rem;
+  display:flex; align-items:center; justify-content:space-between;
+  width:100%; max-width:var(--page-max); margin:0 auto; padding: 0.75rem var(--side-pad); position: relative;
 }
 
-/* 로고 */
-.logo{
-  font-size:1.1rem; font-weight:700; color:#fff; text-decoration:none;
-  margin:0; align-self:center;
-}
+/* 좌측 로고 */
+.logo{ font-size:1.1rem; font-weight:700; margin-right:.75rem; color:#fff; text-decoration:none; }
 
-/* 오른쪽 묶음(버튼 줄 + 검색 줄을 세로로 쌓음) */
-.right-wrap{
-  display:flex; flex-direction:column; align-items:center; gap:.6rem;
-}
+/* 우측 묶음 */
+.right-wrap{ display:flex; align-items:center; gap:.6rem; flex:1; }
+.button-group{ display:flex; align-items:center; gap:.4rem; }
 
-/* 버튼 줄(로고 옆에 위치) */
-.button-group{
-  display:flex; align-items:center; gap:.4rem; flex-wrap:wrap; justify-content:center;
-}
-
-/* 공통 버튼 */
+/* 버튼 공통 */
 .nav-btn,.auth-btn,.mypage-btn{
   background:#fff; color:#4F46E5; border:none; padding:.45rem .9rem; border-radius:9999px;
   cursor:pointer; font-weight:500; text-decoration:none; display:inline-flex; align-items:center; justify-content:center;
@@ -56,16 +51,10 @@ html, body {
 }
 .nav-btn:hover,.auth-btn:hover,.mypage-btn:hover{ background:#f0f0f0; }
 
-/* 검색 줄: 아래 행, 가운데 고정 폭 */
-.user-search{
-  order:2;                         /* 버튼 아래로 */
-  display:flex; align-items:center; gap:.3rem;
-  width:min(100%, 460px);          /* PC에서 보기 좋은 폭 */
-  margin:0;                        /* 가운데 정렬 */
-}
+/* 검색 폼 */
+.user-search{ margin-left:auto; display:flex; align-items:center; gap:.3rem; }
 .user-search input{
-  flex:1 1 auto;
-  padding:.4rem .6rem; border-radius:9999px; border:none; outline:none; min-width:0; font-size:.9rem;
+  padding:.4rem .6rem; border-radius:9999px; border:none; outline:none; min-width:180px; font-size:.9rem; white-space:nowrap; min-width:0;
 }
 .user-search button{
   background:#fff; color:#4F46E5; border:none; padding:.4rem .8rem; border-radius:9999px; cursor:pointer; font-weight:500; font-size:.9rem;
@@ -73,20 +62,61 @@ html, body {
 .user-search button:disabled{ opacity:.7; cursor:default; }
 .user-search button:hover:not(:disabled){ background:#f0f0f0; }
 
-/* 본문 컨테이너 — 헤더와 동일한 최대폭 */
-.container{ flex:1; max-width:var(--page-max); margin:0 auto; padding:1rem var(--side-pad); }
+/* 본문 컨테이너(모든 페이지 공통) — 헤더와 정확히 동일한 최대폭 */
+.container{
+  flex:1; max-width:var(--page-max); margin:0 auto; padding:1rem var(--side-pad);
+}
 
-/* 모바일: 기존 UI 유지(버튼 줄, 검색 줄 세로 배치) */
+/* 데스크탑(원하는 기준에 맞춰 폭 선택: 1024px 권장) */
+@media (min-width: 1024px) {
+  .header-content {
+    max-width: none;      /* 가운데 고정 폭 해제 */
+    margin: 0;            /* 중앙 정렬 해제 */
+    width: 100%;          /* 전체 폭 사용 */
+    padding-left: 0;      /* 좌우 패딩 제거(완전 붙이기) */
+    padding-right: 0;
+  }
+}
+
+/* 데스크톱에서도 검색창을 버튼 그룹 '아래 줄'에 배치 */
+@media (min-width: 768px) {
+  .right-wrap {
+    flex-direction: column;   /* 버튼 줄 아래에 검색창 줄 */
+    align-items: stretch;
+    gap: .6rem;
+  }
+  .user-search {
+    margin-left: 0;           /* 오른쪽 끝으로 밀던 것 해제 */
+    width: 100%;              /* 헤더 내부 폭에 맞춰 풀폭 */
+  }
+}
+
+/* 모바일 대응 */
 @media (max-width:520px){
   .header-content{ flex-direction:column; align-items:stretch; gap:.5rem; }
-  .right-wrap{ width:100%; gap:.5rem; align-items:stretch; }
-  .button-group{ gap:.35rem; overflow-x:auto; -webkit-overflow-scrolling:touch; padding-bottom:.2rem; }
+  .right-wrap{ width:100%; gap:.5rem; flex-direction:column; align-items:stretch; }
+
+  /* 버튼 그룹: 한 줄 유지 + 가로 스크롤 가능 */
+  .button-group{
+    display:flex;
+    flex-wrap: nowrap;            /* 한 줄 유지 */
+    overflow-x: auto;             /* 넘치면 가로 스크롤 */
+    -webkit-overflow-scrolling: touch;
+    gap: .35rem;
+    padding-bottom: .2rem;
+    white-space: nowrap;          /* 줄바꿈 방지 */
+  }
+  .button-group > *{
+    flex: 0 0 auto;               /* 버튼 크기 고정 */
+  }
   .button-group::-webkit-scrollbar{ display:none; }
+
   .nav-btn,.auth-btn,.mypage-btn{ font-size:.88rem; padding:.42rem .75rem; }
   .user-search{ width:100%; gap:.4rem; }
-  .user-search input{ min-width:120px; }
+  .user-search input{ flex:1 1 auto; min-width:120px; }
   .user-search button{ flex:0 0 auto; padding:.42rem .75rem; font-size:.88rem; }
 }
+
 @media (max-width:360px){
   .nav-btn,.auth-btn,.mypage-btn{ font-size:.85rem; padding:.4rem .7rem; }
   .user-search input{ min-width:100px; }

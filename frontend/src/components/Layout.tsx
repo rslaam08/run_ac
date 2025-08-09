@@ -1,6 +1,6 @@
 import React, { useState, useEffect, FormEvent } from 'react';
 import { Link, Outlet, useNavigate } from 'react-router-dom';
-import { api, authApi } from '../api/apiClient';
+import { api, authApi, clearAuthToken } from '../api/apiClient';
 import './Layout.css';
 
 type SimpleUser = { seq: number; name: string };
@@ -19,22 +19,34 @@ const Header: React.FC = () => {
   const [searchBusy, setSearchBusy] = useState(false);
   const navigate = useNavigate();
 
+  // 로그인 상태 확인
   useEffect(() => {
     authApi.get('/me')
       .then(res => { setLoggedIn(true); setUserSeq(res.data.seq); })
       .catch(() => { setLoggedIn(false); setUserSeq(null); });
   }, []);
 
+  // 로그인
   const handleLogin = () => {
     const authBase = String(authApi.defaults.baseURL || '').replace(/\/$/, '');
     const redirectBase = getFrontBase();
     window.location.href = `${authBase}/google?origin=${encodeURIComponent(redirectBase)}`;
   };
-  const handleLogout = () => {
-    authApi.post('/logout').then(() => (window.location.href = getFrontBase()))
-      .catch(err => console.error('Logout failed', err));
+
+  // 로그아웃 (핵심: 토큰 삭제)
+  const handleLogout = async () => {
+    try {
+      // 백엔드에 세션/서버 상태가 남아있다면 정리(실패해도 무시)
+      await authApi.post('/logout').catch(() => {});
+    } finally {
+      clearAuthToken();               // ✅ 로컬스토리지 토큰 제거
+      setLoggedIn(false);
+      setUserSeq(null);
+      window.location.href = getFrontBase();  // 새로고침으로 상태 반영
+    }
   };
 
+  // 유저 검색
   const handleSearch = async (e: FormEvent) => {
     e.preventDefault();
     const q = searchTerm.trim();
@@ -59,7 +71,6 @@ const Header: React.FC = () => {
   return (
     <header className="header">
       <div className="header-content">
-        {/* 위 행: 로고 + 버튼들 (가운데 정렬) */}
         <Link to="/" className="logo">run.ac</Link>
 
         <div className="right-wrap">
@@ -79,7 +90,6 @@ const Header: React.FC = () => {
             <Link to="/calc" className="nav-btn">runbility 계산기</Link>
           </div>
 
-          {/* 아래 행: 검색 (가운데, 단일 행) */}
           <form className="user-search" onSubmit={handleSearch}>
             <input
               type="text"

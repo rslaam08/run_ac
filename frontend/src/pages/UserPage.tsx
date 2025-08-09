@@ -88,6 +88,7 @@ const UserPage: React.FC = () => {
 
   const [editing, setEditing] = useState(false);
   const [introInput, setIntroInput] = useState('');
+  const [savingIntro, setSavingIntro] = useState(false);
 
   const [timeInput, setTimeInput] = useState('00:00:00');
   const [distInput, setDistInput] = useState('0');
@@ -128,10 +129,37 @@ const UserPage: React.FC = () => {
     }
   };
 
-  const saveIntro = () => {
-    api.put<IUser>(`/user/${userSeq}`, { intro: introInput })
-      .then(res => { setUser(res.data); setEditing(false); })
-      .catch(err => console.error('소개 수정 실패', err));
+  // ✅ 소개 저장(토큰을 확실히 헤더에 부착 + 에러 표시)
+  const saveIntro = async () => {
+    if (!user) return;
+    if (introInput.trim() === (user.intro || '').trim()) {
+      setEditing(false);
+      return;
+    }
+    try {
+      setSavingIntro(true);
+      const token = getAuthToken();
+      const headers = token ? { Authorization: `Bearer ${token}` } : undefined;
+
+      const res = await api.put<IUser>(
+        `/user/${user.seq}`,
+        { intro: introInput },
+        { headers }
+      );
+      setUser(res.data);
+      setEditing(false);
+      alert('소개가 저장되었습니다.');
+    } catch (err: any) {
+      const msg =
+        err?.response?.data?.error ||
+        err?.response?.data?.message ||
+        err?.message ||
+        '알 수 없는 오류';
+      console.error('[intro save] error:', err?.response || err);
+      alert(`소개 저장 실패: ${msg}`);
+    } finally {
+      setSavingIntro(false);
+    }
   };
 
   // HH:MM:SS -> 총 초수
@@ -271,8 +299,12 @@ const UserPage: React.FC = () => {
         )}
         {editing && (
           <div className="edit-controls">
-            <button className="save-btn" onClick={saveIntro}>저장</button>
-            <button className="cancel-btn" onClick={() => setEditing(false)}>취소</button>
+            <button className="save-btn" onClick={saveIntro} disabled={savingIntro}>
+              {savingIntro ? '저장 중…' : '저장'}
+            </button>
+            <button className="cancel-btn" onClick={() => setEditing(false)} disabled={savingIntro}>
+              취소
+            </button>
           </div>
         )}
       </div>
@@ -322,7 +354,7 @@ const UserPage: React.FC = () => {
           </tbody>
         </table>
 
-        {/* ——— 페이지 네비게이션 (table 밖으로 이동) ——— */}
+        {/* ——— 페이지 네비게이션 (table 밖) ——— */}
         <div className="pager" style={{ marginTop: '0.75rem', display: 'flex', gap: '0.5rem' }}>
           <button
             onClick={() => setPage(p => Math.max(0, p - 1))}
@@ -337,7 +369,6 @@ const UserPage: React.FC = () => {
             다음
           </button>
         </div>
-        {/* ———————————————————————————————— */}
       </div>
 
       {currentSeq === user.seq && (
@@ -350,7 +381,7 @@ const UserPage: React.FC = () => {
               value={timeInput}
               onChange={e=>setTimeInput(e.target.value)}
               placeholder="HH:MM:SS"
-              pattern="^\d{1,2}:[0-5]\d:[0-5]\d$"
+              pattern="^\\d{1,2}:[0-5]\\d:[0-5]\\d$"
               title="예: 00:45:30"
               required
             />

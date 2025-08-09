@@ -21,9 +21,7 @@ const app = express();
 const isProd = process.env.NODE_ENV === 'production';
 const PORT = Number(process.env.PORT || 4000);
 
-// 허용할 프론트엔드 오리진 목록
-// - 쉼표(,)로 여러 개 지정 가능: CLIENT_URLS="https://rslaam08.github.io, http://localhost:3000"
-// - 아무것도 없으면 로컬/깃허브 기본값 사용
+// 여러 프론트 오리진 허용
 const DEFAULT_ORIGINS = ['http://localhost:3000', 'https://rslaam08.github.io'];
 const CLIENT_URLS = (process.env.CLIENT_URLS || process.env.CLIENT_URL || '')
   .split(',')
@@ -31,16 +29,11 @@ const CLIENT_URLS = (process.env.CLIENT_URLS || process.env.CLIENT_URL || '')
   .filter(Boolean);
 const ALLOWED_ORIGINS = CLIENT_URLS.length ? CLIENT_URLS : DEFAULT_ORIGINS;
 
-// 퍼블릭 API URL(이미지 URL 만들 때 사용)
-// 예: https://sshsrun-api.onrender.com
+// 퍼블릭 API URL (정적 파일 URL 구성에 사용)
 const PUBLIC_API_URL = (process.env.PUBLIC_API_URL || `http://localhost:${PORT}`).replace(/\/$/, '');
 
-// Mongo 연결 문자열 (MONGODB_URI 우선)
-const MONGO = process.env.MONGODB_URI || process.env.MONGO_URI;
-if (!MONGO) {
-  console.error('❌ MONGODB_URI(.env)가 필요합니다.');
-  process.exit(1);
-}
+// 업로드 디렉터리(서버/정적 서빙 공통)
+const UPLOAD_DIR = process.env.UPLOAD_DIR || path.join(__dirname, '../uploads');
 
 /* =========================
  * 프록시 신뢰(HTTPS 쿠키용)
@@ -50,48 +43,44 @@ app.set('trust proxy', 1);
 /* =========================
  * 미들웨어
  * ========================= */
-// CORS: 여러 오리진 허용 + 쿠키 전송
 app.use(cors({
   origin(origin, cb) {
-    if (!origin) return cb(null, true);              // 서버-서버/툴 호출 허용
+    if (!origin) return cb(null, true);                // 서버-서버, 모바일앱 등
     if (ALLOWED_ORIGINS.includes(origin)) return cb(null, true);
     return cb(new Error(`CORS blocked for origin: ${origin}`));
   },
   credentials: true
 }));
 
-// JSON 파서
 app.use(express.json());
 
-// 업로드된 이미지 static 서빙 (record.ts와 반드시 동일 경로)
-const UPLOAD_ROOT = path.resolve(__dirname, '..', 'uploads');
-app.use('/uploads', express.static(UPLOAD_ROOT));
+// 업로드 정적 서빙 (업로드와 동일 경로)
+app.use('/uploads', express.static(UPLOAD_DIR));
 
-// 세션 (프로덕션: MongoStore 사용 + 크로스사이트 쿠키 세팅)
+/* =========================
+ * 세션 (MongoStore + 크로스사이트 쿠키)
+ * ========================= */
+const MONGO = process.env.MONGODB_URI || process.env.MONGO_URI;
+if (!MONGO) {
+  console.error('❌ MONGODB_URI(.env)가 필요합니다.');
+  process.exit(1);
+}
+
 app.use(session({
   name: 'smsession',
-  secret: process.env.SESSION_SECRET!,  // 반드시 Render 환경변수에 설정
+  secret: process.env.SESSION_SECRET!,  // Render 환경변수 필수
   resave: false,
   saveUninitialized: false,
   store: MongoStore.create({
     mongoUrl: MONGO,
-    ttl: 60 * 60 * 24 * 7,  // 7일
+    ttl: 60 * 60 * 24 * 7,
     autoRemove: 'native'
   }),
   cookie: isProd
-    ? {
-        maxAge: 24 * 60 * 60 * 1000,
-        sameSite: 'none',  // GitHub Pages(다른 도메인)에서 쿠키 필요
-        secure: true       // HTTPS 필수(Render는 HTTPS)
-      }
-    : {
-        maxAge: 24 * 60 * 60 * 1000,
-        sameSite: 'lax',   // 로컬 개발에선 Lax/secure=false
-        secure: false
-      }
+    ? { maxAge: 24 * 60 * 60 * 1000, sameSite: 'none', secure: true }
+    : { maxAge: 24 * 60 * 60 * 1000, sameSite: 'lax',  secure: false }
 }));
 
-// Passport
 app.use(passport.initialize());
 app.use(passport.session());
 
@@ -111,7 +100,6 @@ app.use('/api/records', recordRouter);
 
 /* =========================
  * Express 5 catch-all
- *  - 문자열 패턴 쓰지 말고 핸들러만 등록
  * ========================= */
 app.use((req, res) => {
   res.status(404).json({ message: `Cannot ${req.method} ${req.originalUrl}` });
@@ -136,9 +124,6 @@ app.use((
   res.status(500).json({ error: '서버 오류가 발생했습니다.' });
 });
 
-/* =========================
- * 서버 시작
- * ========================= */
 app.listen(PORT, () => {
   console.log(`🚀 Server running on ${PUBLIC_API_URL}`);
 });

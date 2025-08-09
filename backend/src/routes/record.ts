@@ -1,27 +1,35 @@
-// backend/src/routes/record.ts
 import path from 'path';
 import fs from 'fs';
 import express from 'express';
 import multer from 'multer';
 import { Types } from 'mongoose';
 import Record from '../models/Record';
+import User from '../models/User';
 
 const router = express.Router();
 
-/** 로그인 필요 미들웨어 */
+/** ─────────────────────────────
+ *  로그인 가드
+ * ───────────────────────────── */
 function ensureAuth(req: express.Request, res: express.Response, next: express.NextFunction) {
-  const ok = (req as any).isAuthenticated?.() ?? false;
-  if (ok) return next();
+  const isAuthed = (req as any).isAuthenticated?.() ?? false;
+  if (isAuthed) return next();
   return res.status(401).json({ error: 'Unauthorized' });
 }
 
-/** 업로드 디렉터리 (server.ts와 반드시 동일 경로 사용) */
-const UPLOAD_ROOT = path.resolve(__dirname, '..', 'uploads');
-if (!fs.existsSync(UPLOAD_ROOT)) fs.mkdirSync(UPLOAD_ROOT, { recursive: true });
+/** ─────────────────────────────
+ *  업로드 디렉터리 (지속 디스크 지원)
+ *  - Render Disk 마운트: /data
+ *  - 환경변수 UPLOAD_DIR=/data/uploads 권장
+ * ───────────────────────────── */
+const UPLOAD_DIR =
+  process.env.UPLOAD_DIR || path.join(__dirname, '../../uploads');
+
+if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 
 /** Multer 설정 (이미지 전용 / 50MB 제한) */
 const storage = multer.diskStorage({
-  destination: (_req, _file, cb) => cb(null, UPLOAD_ROOT),
+  destination: (_req, _file, cb) => cb(null, UPLOAD_DIR),
   filename: (_req, file, cb) => {
     const unique = Date.now() + '-' + Math.round(Math.random() * 1e9);
     const ext = path.extname(file.originalname);
@@ -47,14 +55,16 @@ function parseHMSToSec(hms: string): number {
 }
 
 /** 업로드된 파일 삭제 (검증 실패 시) */
-function safeUnlink(absPath?: string | null) {
+function safeUnlink(absPath: string | null | undefined) {
   if (!absPath) return;
   fs.promises.unlink(absPath).catch(() => {});
 }
 
-/** 새 기록 업로드 (승인 대기) — POST /api/records
+/** ─────────────────────────────
+ *  [POST] /api/records
+ *  새 기록 업로드 (승인 대기)
  *  body: time(HH:MM:SS), distance(km), date(YYYY-MM-DD), image(file)
- */
+ * ───────────────────────────── */
 router.post('/', ensureAuth, upload.single('image'), async (req, res) => {
   const absFilePath = req.file?.path;
 
@@ -100,21 +110,19 @@ router.post('/', ensureAuth, upload.single('image'), async (req, res) => {
       return res.status(400).json({ error: '이미지 파일이 필요합니다.' });
     }
 
-    // 날짜 검증
+    // 이미지 절대 URL (PUBLIC_API_URL 사용)
+    const filename = path.basename(req.file.path);
+    const base =
+      (process.env.PUBLIC_API_URL?.replace(/\/$/, '')) ||
+      `${req.protocol}://${req.get('host')}`;
+    const imageUrl = `${base}/uploads/${filename}`;
+
+    // 날짜
     const dateObj = new Date(date);
-    if (!date || isNaN(dateObj.getTime())) {
+    if (isNaN(dateObj.getTime())) {
       safeUnlink(absFilePath);
       return res.status(400).json({ error: '날짜 형식이 올바르지 않습니다.' });
     }
-
-    // 절대 URL 생성
-    const base = (
-      process.env.PUBLIC_API_URL ||
-      `${req.protocol}://${req.get('host')}`
-    ).replace(/\/$/, ''); // 끝 슬래시 제거
-
-    const filename = req.file.filename; // 저장된 파일명
-    const imageUrl = `${base}/uploads/${filename}`;
 
     // 저장 (승인 대기)
     const saved = await Record.create({
@@ -135,6 +143,7 @@ router.post('/', ensureAuth, upload.single('image'), async (req, res) => {
       }
       return res.status(400).json({ error: `업로드 오류: ${err.message}` });
     }
+
     console.error('[POST /api/records] error:', err);
     safeUnlink(absFilePath);
     return res.status(500).json({ error: '서버 오류가 발생했습니다.' });

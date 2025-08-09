@@ -27,7 +27,7 @@
 .ranking h3 { font-size: 1.25rem; margin-bottom: 1rem; }
 
 .ranking-table {
-  width: 100%;
+  width: auto;
   border-collapse: collapse;
 }
 .ranking-table th,
@@ -81,7 +81,7 @@
 
 /* 표 레이아웃 */
 .legend-table {
-  width: 100%;
+  width: auto;
   border-collapse: collapse;
   text-align: center;
 }

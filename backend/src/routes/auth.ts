@@ -1,4 +1,3 @@
-// backend/src/routes/auth.ts
 import express from 'express';
 import passport from 'passport';
 
@@ -6,35 +5,18 @@ const router = express.Router();
 
 const isProd = process.env.NODE_ENV === 'production';
 
-/**
- * 프론트 도메인(여러 개 있을 수 있음)
- * - Render 환경변수 CLIENT_URLS="https://rslaam08.github.io,http://localhost:3000"
- * - 없으면 기본값 사용
- */
-const DEFAULT_CLIENTS = ['http://localhost:3000', 'https://rslaam08.github.io'];
-const CLIENT_URLS = (process.env.CLIENT_URLS || process.env.CLIENT_URL || '')
-  .split(',')
-  .map(s => s.trim())
-  .filter(Boolean);
-const CLIENTS = CLIENT_URLS.length ? CLIENT_URLS : DEFAULT_CLIENTS;
-
-// 깃헙 페이지는 /run_ac 경로 아래에 앱이 배포됨
-function pickFrontendHome() {
-  const primary = CLIENTS[0] || 'http://localhost:3000';
-  // 프로덕션(깃헙 페이지)일 때는 /run_ac/로 보내기
-  if (isProd && primary.includes('github.io')) {
-    return `${primary.replace(/\/$/, '')}/run_ac/`;
-  }
-  return primary; // 로컬은 http://localhost:3000
+/** 로그인 후 리다이렉트할 홈(백엔드와 같은 도메인으로) */
+function backendHome() {
+  const base = (process.env.PUBLIC_API_URL || `http://localhost:${process.env.PORT || 4000}`).replace(/\/$/, '');
+  return `${base}/`;
 }
 
 // (선택) 디버그용
 router.get('/debug', (_req, res) => {
   res.json({
-    CLIENTS,
-    redirectTarget: pickFrontendHome(),
-    GOOGLE_CALLBACK_URL: process.env.GOOGLE_CALLBACK_URL,
     NODE_ENV: process.env.NODE_ENV,
+    GOOGLE_CALLBACK_URL: process.env.GOOGLE_CALLBACK_URL,
+    redirectTarget: backendHome()
   });
 });
 
@@ -44,18 +26,16 @@ router.get('/google', passport.authenticate('google', { scope: ['profile', 'emai
 // 2) 구글 OAuth 콜백
 router.get(
   '/google/callback',
-  passport.authenticate('google', { failureRedirect: pickFrontendHome() }),
+  passport.authenticate('google', { failureRedirect: '/' }),
   (_req, res) => {
-    // 로그인 성공 후 프론트로 이동
-    res.redirect(pickFrontendHome());
+    // 로그인 성공 후 백엔드가 서빙하는 프론트 홈으로
+    res.redirect(backendHome());
   }
 );
 
 // 3) 현재 로그인된 유저 정보
 router.get('/me', (req, res) => {
-  // Passport 타입 선언 이슈 피하려면 as any 캐스팅
-  const isAuthed = (req as any).isAuthenticated?.() ?? false;
-  if (isAuthed && req.user) {
+  if (req.isAuthenticated && req.isAuthenticated() && req.user) {
     const user = req.user as any;
     return res.json({
       seq: user.seq,
@@ -73,12 +53,11 @@ router.post('/logout', (req, res, next) => {
     if (err) return next(err);
 
     req.session?.destroy(sessionErr => {
-      // 세션은 파괴하고
+      // 세션 쿠키 삭제 (서버 세션 설정과 동일한 sameSite/secure 로)
       const cookieOptions = isProd
-        ? { path: '/', httpOnly: true, sameSite: 'none' as const, secure: true }
-        : { path: '/', httpOnly: true, sameSite: 'lax'  as const, secure: false };
+        ? { path: '/', httpOnly: true, sameSite: 'lax' as const, secure: true }
+        : { path: '/', httpOnly: true, sameSite: 'lax' as const, secure: false };
 
-      // server.ts의 express-session name과 동일해야 함 (name: 'smsession')
       res.clearCookie('smsession', cookieOptions);
 
       if (sessionErr) {

@@ -1,4 +1,3 @@
-// backend/src/server.ts
 import 'dotenv/config';
 import express from 'express';
 import mongoose from 'mongoose';
@@ -22,19 +21,20 @@ const app = express();
 const isProd = process.env.NODE_ENV === 'production';
 const PORT = Number(process.env.PORT || 4000);
 
-// 여러 프론트 오리진 허용 (이제 같은 오리진으로 서빙하지만, 안전하게 유지)
-const DEFAULT_ORIGINS = ['http://localhost:3000', 'https://rslaam08.github.io'];
+// 여러 프론트 오리진 허용(필요 시)
 const CLIENT_URLS = (process.env.CLIENT_URLS || process.env.CLIENT_URL || '')
   .split(',')
   .map(s => s.trim())
   .filter(Boolean);
-const ALLOWED_ORIGINS = CLIENT_URLS.length ? CLIENT_URLS : DEFAULT_ORIGINS;
 
-// 퍼블릭 API URL (정적 파일 URL 구성에 사용)
+// 퍼블릭 API URL (정적 파일 URL 구성/로그 출력용)
 const PUBLIC_API_URL = (process.env.PUBLIC_API_URL || `http://localhost:${PORT}`).replace(/\/$/, '');
 
 // 업로드 디렉터리(서버/정적 서빙 공통)
 const UPLOAD_DIR = process.env.UPLOAD_DIR || path.join(__dirname, '../uploads');
+
+// 프론트 빌드 파일을 둘 경로
+const FRONT_BUILD_DIR = path.join(__dirname, '../frontend_build');
 
 /* =========================
  * 프록시 신뢰(HTTPS 쿠키용)
@@ -44,13 +44,9 @@ app.set('trust proxy', 1);
 /* =========================
  * 미들웨어
  * ========================= */
+// CORS: origin:true(요청 Origin 그대로 반영) + credentials 허용
 app.use(cors({
-  origin(origin, cb) {
-    // 같은 오리진일 때는 CORS 자체가 필요 없지만, 다른 도구로 호출할 수도 있으니 방어적으로 둡니다.
-    if (!origin) return cb(null, true); // 서버-서버, 모바일 앱 등
-    if (ALLOWED_ORIGINS.includes(origin) || origin === PUBLIC_API_URL) return cb(null, true);
-    return cb(new Error(`CORS blocked for origin: ${origin}`));
-  },
+  origin: true,            // 요청한 Origin을 그대로 반영
   credentials: true
 }));
 
@@ -60,7 +56,7 @@ app.use(express.json());
 app.use('/uploads', express.static(UPLOAD_DIR));
 
 /* =========================
- * 세션 (MongoStore + 크로스사이트 쿠키)
+ * 세션 (MongoStore + 쿠키)
  * ========================= */
 const MONGO = process.env.MONGODB_URI || process.env.MONGO_URI;
 if (!MONGO) {
@@ -78,9 +74,10 @@ app.use(session({
     ttl: 60 * 60 * 24 * 7,
     autoRemove: 'native'
   }),
+  // 이제 같은 도메인에서 프론트를 서빙하므로 SameSite=Lax 로도 안정적 동작
   cookie: isProd
-    ? { maxAge: 24 * 60 * 60 * 1000, sameSite: 'none', secure: true }
-    : { maxAge: 24 * 60 * 60 * 1000, sameSite: 'lax',  secure: false }
+    ? { maxAge: 24 * 60 * 60 * 1000, sameSite: 'lax', secure: true }
+    : { maxAge: 24 * 60 * 60 * 1000, sameSite: 'lax', secure: false }
 }));
 
 app.use(passport.initialize());
@@ -101,20 +98,21 @@ app.use('/api/user',    userRouter);
 app.use('/api/records', recordRouter);
 
 /* =========================
- * 프론트엔드 정적 파일 서빙 (같은 오리진)
- *   - 빌드 산출물을 frontend/build에 두고, 그걸 그대로 서빙합니다.
- *   - __dirname = backend/dist 이므로, ../../frontend/build 가 정확합니다.
+ * 프론트 정적 서빙 + SPA 캐치올
  * ========================= */
-const FRONT_BUILD = path.join(__dirname, '../../frontend/build');
-app.use(express.static(FRONT_BUILD));
+// 프론트 빌드 정적 서빙
+app.use(express.static(FRONT_BUILD_DIR));
 
-// SPA 라우팅 지원: API/업로드가 아닌 GET 요청은 모두 index.html로 돌려보냄
-app.use((req, res, next) => {
-  if (req.method !== 'GET') return next();
-  if (req.path.startsWith('/api') || req.path.startsWith('/auth') || req.path.startsWith('/uploads')) {
+// API/업로드/인증이 아닌 모든 경로는 SPA 엔트리로
+app.get('*', (req, res, next) => {
+  if (
+    req.path.startsWith('/api/') ||
+    req.path.startsWith('/auth/') ||
+    req.path.startsWith('/uploads/')
+  ) {
     return next();
   }
-  return res.sendFile(path.join(FRONT_BUILD, 'index.html'));
+  res.sendFile(path.join(FRONT_BUILD_DIR, 'index.html'));
 });
 
 /* =========================

@@ -4,6 +4,7 @@
   max-width: var(--page-max);
   margin: 2rem auto;
   padding: 0 1rem;
+  overflow-x: hidden;
 }
 
 .ranking-section {

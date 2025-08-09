@@ -71,7 +71,7 @@ const RunbilityCalculator: React.FC = () => {
   };
 
   return (
-    <div className="calc-wrapper">
+    <div className="calc-wrapper calc-page-root">
       <h2>Runbility 계산기</h2>
 
       <div className="calc-form">

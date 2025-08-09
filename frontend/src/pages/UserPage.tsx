@@ -271,7 +271,7 @@ const UserPage: React.FC = () => {
   };
 
   return (
-    <div className="container">
+    <div className="container user-page-root">
       <h1 className="user-header">
         <span
           className={getRunClass(top5Avg)}

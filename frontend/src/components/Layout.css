@@ -1,11 +1,12 @@
-html {
-  /* 스크롤바 공간을 항상 확보해 좌우 여백이 대칭이 되게 함 */
+/* 전역: 수평 넘침 방지 + 대칭 스크롤바 */
+html, body {
+  overflow-x: hidden;          /* ← 우측 흰 띠/가로 스크롤 방지 */
+  margin: 0;
   scrollbar-gutter: stable both-edges;
-  /* (선택) 필요하면 아래도 함께 — 일부 환경에서 더 안정적 */
-  /* overflow-y: scroll; */
 }
 
-body { margin: 0; }  /* 혹시 기본 마진이 남아있다면 제거 */
+/* 권장: 보더/패딩 계산 일관화 */
+*, *::before, *::after { box-sizing: border-box; }
 
 
 :root{
@@ -63,18 +64,16 @@ body { margin: 0; }  /* 혹시 기본 마진이 남아있다면 제거 */
   flex:1; max-width:var(--page-max); margin:0 auto; padding:1rem var(--side-pad);
 }
 
-/* 데스크톱 전용: 검색창을 절대 우측 상단으로 */
+/* 데스크톱에서도 검색창을 버튼 그룹 '아래 줄'에 배치 */
 @media (min-width: 768px) {
-  .header-content {
-    /* 검색창이 겹치지 않도록 우측에 공간 약간 확보(버튼+검색창 폭) */
-    padding-right: calc(var(--side-pad) + 300px);
+  .right-wrap {
+    flex-direction: column;   /* 버튼 줄 아래에 검색창 줄 */
+    align-items: stretch;
+    gap: .6rem;
   }
   .user-search {
-    position: absolute;
-    right: var(--side-pad);
-    top: 50%;
-    transform: translateY(-50%);
-    margin-left: 0;      /* 흐름에서 빠지므로 여백 제거 */
+    margin-left: 0;           /* 오른쪽 끝으로 밀던 것 해제 */
+    width: 100%;              /* 헤더 내부 폭에 맞춰 풀폭 */
   }
 }
 

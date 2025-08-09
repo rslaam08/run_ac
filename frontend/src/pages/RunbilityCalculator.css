@@ -1,3 +1,7 @@
+/* 계산기 페이지를 감싸는 최상위 컨테이너에 적용 */
+.calc-page-root { overflow-x: hidden; }    /* ← 바깥 div에 className="calc-page-root" 한 줄만 추가 */
+
+
 .calc-wrapper {
   background: #fff;
   padding: 1rem 1.25rem;

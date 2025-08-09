@@ -2,22 +2,26 @@ import React, { useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 
 const AuthCallback: React.FC = () => {
-  const nav = useNavigate();
-  const loc = useLocation();
+  const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
-    const params = new URLSearchParams(loc.search);
+    const hash = location.hash || '';
+    const query = hash.includes('?') ? hash.split('?')[1] : '';
+    const params = new URLSearchParams(query);
     const token = params.get('token');
-    if (token) {
-      localStorage.setItem('token', token);
-      nav('/', { replace: true });
-    } else {
-      alert('로그인 토큰을 받지 못했습니다.');
-      nav('/', { replace: true });
-    }
-  }, [loc, nav]);
+    const error = params.get('error');
 
-  return <div>로그인 처리 중…</div>;
+    if (token) {
+      localStorage.setItem('authToken', token);
+      navigate('/', { replace: true });
+    } else {
+      alert(`로그인 실패${error ? `: ${error}` : ''}`);
+      navigate('/', { replace: true });
+    }
+  }, [location.hash, navigate]);
+
+  return <div style={{ padding: '1rem' }}>로그인 처리 중…</div>;
 };
 
 export default AuthCallback;

@@ -25,7 +25,7 @@
 .logo {
   font-size: 1.25rem;
   font-weight: bold;
-  margin-right: 1rem; /* 로고와 우측 공백 */
+  margin-right: 1rem;
   color: white;
   text-decoration: none;
 }
@@ -34,8 +34,8 @@
 .right-wrap {
   display: flex;
   align-items: center;
-  gap: 0.75rem;            /* 그룹들 사이 간격 */
-  flex: 1;                 /* 오른쪽 영역이 남는 공간 사용 */
+  gap: 0.75rem;
+  flex: 1;
 }
 
 /* 버튼 그룹(랭킹/로그인/마이페이지/계산기) */
@@ -45,7 +45,7 @@
   gap: 0.5rem;
 }
 
-/* 공통 버튼 스타일 (글자 크기 통일) */
+/* 공통 버튼 스타일 */
 .nav-btn,
 .auth-btn,
 .mypage-btn {
@@ -60,7 +60,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.95rem;      /* ← 버튼 글자 크기 통일 */
+  font-size: 0.95rem;
 }
 
 .nav-btn:hover,
@@ -71,7 +71,7 @@
 
 /* 검색 폼 — 맨 오른쪽 정렬 */
 .user-search {
-  margin-left: auto;       /* ← 맨 오른쪽으로 밀기 */
+  margin-left: auto;
   display: flex;
   align-items: center;
   gap: 0.25rem;
@@ -83,7 +83,7 @@
   border: none;
   outline: none;
   min-width: 200px;
-  font-size: 0.95rem;      /* 버튼과 글자 크기 맞춤 */
+  font-size: 0.95rem;
 }
 
 .user-search button {
@@ -94,7 +94,7 @@
   border-radius: 9999px;
   cursor: pointer;
   font-weight: 500;
-  font-size: 0.95rem;      /* 버튼과 글자 크기 맞춤 */
+  font-size: 0.95rem;
 }
 
 .user-search button:disabled {
@@ -113,27 +113,24 @@
   padding: 1rem;
 }
 
-/* ===== 기존 스타일은 그대로 두고, 아래 "모바일 대응"만 추가 ===== */
-
 /* 버튼/링크가 한 줄로 깨지지 않게 */
 .nav-btn,
 .auth-btn,
 .mypage-btn {
-  white-space: nowrap;          /* ← 글자 줄바꿈 금지 */
-  min-width: max-content;       /* 내용만큼 너비 확보 */
+  white-space: nowrap;
+  min-width: max-content;
 }
 
-/* 검색 버튼/인풋도 줄바꿈 방지 */
 .user-search input,
 .user-search button {
   white-space: nowrap;
-  min-width: 0;                 /* 입력창은 미디어쿼리에서 폭을 따로 조절 */
+  min-width: 0;
 }
 
 /* ------------------ 모바일 대응 ------------------ */
 @media (max-width: 520px) {
   .header-content {
-    flex-direction: column;     /* 로고 위, 기능 아래로 2단 배치 */
+    flex-direction: column;
     align-items: stretch;
     gap: 0.5rem;
   }
@@ -141,21 +138,19 @@
   .right-wrap {
     width: 100%;
     gap: 0.5rem;
-    flex-direction: column;     /* 버튼그룹, 검색창을 세로로 쌓기 */
+    flex-direction: column;
     align-items: stretch;
   }
 
-  /* 버튼 그룹은 좌우 스크롤 허용(넘칠 때) */
   .button-group {
     display: flex;
     gap: 0.4rem;
-    overflow-x: auto;           /* 가로 스크롤 */
+    overflow-x: auto;
     -webkit-overflow-scrolling: touch;
-    padding-bottom: 0.25rem;    /* 스크롤 바와 겹치지 않게 여백 */
+    padding-bottom: 0.25rem;
   }
-  .button-group::-webkit-scrollbar { display: none; } /* iOS에서 스크롤바 숨김 */
+  .button-group::-webkit-scrollbar { display: none; }
 
-  /* 버튼 크기 약간 축소 */
   .nav-btn,
   .auth-btn,
   .mypage-btn {
@@ -163,7 +158,6 @@
     padding: 0.45rem 0.8rem;
   }
 
-  /* 검색 영역은 한 줄로 보이도록 */
   .user-search {
     width: 100%;
     display: flex;
@@ -171,8 +165,8 @@
     gap: 0.4rem;
   }
   .user-search input {
-    flex: 1 1 auto;             /* 남는 공간을 입력창이 가져가게 */
-    min-width: 120px;           /* 너무 작아지지 않게 최소폭 */
+    flex: 1 1 auto;
+    min-width: 120px;
   }
   .user-search button {
     flex: 0 0 auto;
@@ -181,7 +175,6 @@
   }
 }
 
-/* 약간 더 작은 화면 대응(선택) */
 @media (max-width: 360px) {
   .nav-btn,
   .auth-btn,

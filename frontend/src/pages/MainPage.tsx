@@ -14,8 +14,8 @@ function getRatingClass(value: number): string {
   if (value < 5500)   return 'run-platinum';
   if (value < 7500)   return 'run-diamond';
   if (value < 10000)  return 'run-ruby';
-  if (value < 15000)  return 'run-gradient1';
-  return 'run-gradient2';
+  if (value < 15000)  return 'run-gradient1-text';
+  return 'run-gradient2-text';
 }
 
 interface IUser {
@@ -142,7 +142,7 @@ const MainPage: React.FC = () => {
       <section className="rating-legend">
         <h3>Rating/Runbility 안내</h3>
 
-        {/* ✅ 모바일에서 가로 스크롤 가능하게 래퍼 추가 */}
+        {/* 모바일에서 가로 스크롤 가능 */}
         <div className="legend-table-wrap">
           <table className="legend-table">
             <thead>
@@ -155,61 +155,71 @@ const MainPage: React.FC = () => {
               </tr>
             </thead>
             <tbody>
-              <tr className="run-bronze">
-                <td>Bronze</td>
+              <tr>
+                <td className="run-bronze">Bronze</td>
                 <td>1000 ~ 1250</td>
                 <td>1250 ~ 1500</td>
                 <td>1500 ~ 1750</td>
                 <td>1750 ~ 2000</td>
               </tr>
-              <tr className="run-silver">
-                <td>Silver</td>
+              <tr>
+                <td className="run-silver">Silver</td>
                 <td>2000 ~ 2250</td>
                 <td>2250 ~ 2500</td>
                 <td>2500 ~ 2750</td>
                 <td>2750 ~ 3000</td>
               </tr>
-              <tr className="run-gold">
-                <td>Gold</td>
+              <tr>
+                <td className="run-gold">Gold</td>
                 <td>3000 ~ 3250</td>
                 <td>3250 ~ 3500</td>
                 <td>3500 ~ 3750</td>
                 <td>3750 ~ 4000</td>
               </tr>
-              <tr className="run-platinum">
-                <td>Platinum</td>
+              <tr>
+                <td className="run-platinum">Platinum</td>
                 <td>4000 ~ 4300</td>
                 <td>4300 ~ 4700</td>
                 <td>4700 ~ 5100</td>
                 <td>5100 ~ 5500</td>
               </tr>
-              <tr className="run-diamond">
-                <td>Diamond</td>
+              <tr>
+                <td className="run-diamond">Diamond</td>
                 <td>5500 ~ 6000</td>
                 <td>6000 ~ 6500</td>
                 <td>6500 ~ 7000</td>
                 <td>7000 ~ 7500</td>
               </tr>
-              <tr className="run-ruby">
-                <td>Ruby</td>
+              <tr>
+                <td className="run-ruby">Ruby</td>
                 <td>7500 ~ 8100</td>
                 <td>8100 ~ 8700</td>
                 <td>8700 ~ 9300</td>
                 <td>9300 ~ 10000</td>
               </tr>
-              <tr className="run-gradient1">
-                <td colSpan={4}>Master</td>
-                <td colSpan={1}>10000 ~</td>
+
+              {/* ⬇⬇ 그라데이션 텍스트는 span에만 적용 */}
+              <tr className="legend-emphasis">
+                <td colSpan={4}>
+                  <span className="run-gradient1-text">Master</span>
+                </td>
+                <td>
+                  <span className="run-gradient1-text">10000 ~</span>
+                </td>
               </tr>
-              <tr className="run-gradient2">
-                <td colSpan={4}>The Lord of Running</td>
-                <td colSpan={1}>15000 ~</td>
+              <tr className="legend-emphasis">
+                <td colSpan={4}>
+                  <span className="run-gradient2-text">The Lord of Running</span>
+                </td>
+                <td>
+                  <span className="run-gradient2-text">15000 ~</span>
+                </td>
               </tr>
             </tbody>
           </table>
         </div>
 
-        <h6>
+        <h6 className="legend-footnote">
           기록에 따른 runblility: bit.ly/41p8YMG<br/>
           만약 기록이 표에 표기된 축의 사잇값이라면, 선형적으로 처리합니다.
         </h6>

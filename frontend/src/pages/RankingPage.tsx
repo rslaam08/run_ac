@@ -191,7 +191,7 @@ const RankingPage: React.FC = () => {
         <table className="ranking-table">
           <thead>
             <tr>
-              <th>순위</th><th>유저</th><th>거리(km)</th><th>시간</th><th>페이스</th><th>Runbility</th>
+              <th>순위</th><th>유저</th><th>거리(km)</th><th>페이스</th><th>Runbility</th>
             </tr>
           </thead>
           <tbody>
@@ -200,7 +200,6 @@ const RankingPage: React.FC = () => {
                 <td>{bestRunPage * PAGE_SIZE + i + 1}</td>
                 <td>{r.name}</td>
                 <td>{r.distance.toFixed(2)}</td>
-                <td>{formatTime(r.timeSec)}</td>
                 <td>{r.pace}</td>
                 <td
                   className={[

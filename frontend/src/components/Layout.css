@@ -5,6 +5,10 @@ html, body {
   scrollbar-gutter: stable both-edges;
 }
 
+.header-content {
+  align-items: flex-start;   /* ← 세로축 상단 정렬 */
+}
+
 /* 권장: 보더/패딩 계산 일관화 */
 *, *::before, *::after { box-sizing: border-box; }
 
@@ -63,6 +67,18 @@ html, body {
 .container{
   flex:1; max-width:var(--page-max); margin:0 auto; padding:1rem var(--side-pad);
 }
+
+/* 데스크탑(원하는 기준에 맞춰 폭 선택: 1024px 권장) */
+@media (min-width: 1024px) {
+  .header-content {
+    max-width: none;      /* 가운데 고정 폭 해제 */
+    margin: 0;            /* 중앙 정렬 해제 */
+    width: 100%;          /* 전체 폭 사용 */
+    padding-left: 0;      /* 좌우 패딩 제거(완전 붙이기) */
+    padding-right: 0;
+  }
+}
+
 
 /* 데스크톱에서도 검색창을 버튼 그룹 '아래 줄'에 배치 */
 @media (min-width: 768px) {

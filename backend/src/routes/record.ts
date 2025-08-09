@@ -9,18 +9,13 @@ import User from '../models/User';
 
 const router = express.Router();
 
-/** 로그인 필수 미들웨어 */
-function ensureAuth(
-  req: express.Request,
-  res: express.Response,
-  next: express.NextFunction
-) {
-  // @ts-ignore - passport가 확장한 메서드
-  if (typeof req.isAuthenticated === 'function' && req.isAuthenticated()) {
-    return next();
-  }
+// backend/src/routes/record.ts  (ensureAuth 교체)
+function ensureAuth(req: express.Request, res: express.Response, next: express.NextFunction) {
+  const isAuthed = (req as any).isAuthenticated?.() ?? false;
+  if (isAuthed) return next();
   return res.status(401).json({ error: 'Unauthorized' });
 }
+
 
 /** 업로드 디렉터리 준비 */
 const uploadDir = path.join(__dirname, '../../uploads');

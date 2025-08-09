@@ -1,6 +1,6 @@
-/* 전체 레이아웃 여백 */
+/* 본문 컨테이너 — 헤더와 동일한 max-width 사용 */
 .main-container {
-  max-width: 800px;
+  max-width: var(--page-max);
   margin: 2rem auto;
   padding: 0 1rem;
 }
@@ -14,7 +14,7 @@
   text-align: center;
   margin-bottom: 2rem;
 }
-.intro h1 { font-size: 1.75rem; margin-bottom: 0.5rem; }  /* h1로 수정 */
+.intro h1 { font-size: 1.75rem; margin-bottom: 0.5rem; }
 .intro p  { font-size: 1rem; line-height: 1.5; color: #4A5568; }
 
 /* 랭킹 카드 */
@@ -26,7 +26,7 @@
 }
 .ranking h3 { font-size: 1.25rem; margin-bottom: 1rem; }
 
-/* 모바일에서 “너무 넓다” 해결: 랭킹 표는 100% 폭 */
+/* 랭킹 표 — 컨테이너 너비에 맞춤 */
 .ranking-table {
   width: 100%;
   border-collapse: collapse;
@@ -45,29 +45,25 @@
 .ranking-table tr:nth-child(even) { background: #F7FAFC; }
 .ranking-table tr:hover { background: #EDF2F7; }
 
-/* 레이팅 색상 (기본 컬러) */
+/* ===== 티어 색(하단 표와 동일 팔레트) ===== */
 .run-bronze   { color: #cd7f32; }
-.run-silver   { color: #8c8c8c; }  /* 모바일 대비 약간 진하게 */
-.run-gold     { color: #b59d00; }
-.run-platinum { color: #5b9e63; }
-.run-diamond  { color: #2e86b9; }
-.run-ruby     { color: #cc0f57; }
+.run-silver   { color: #c0c0c0; }
+.run-gold     { color: #f5df62; }
+.run-platinum { color: #9fd787; }
+.run-diamond  { color: #87ceeb; }
+.run-ruby     { color: #e61565; }
 
-/* 그라데이션 텍스트는 "셀 내부 span"에만 적용 */
+/* 숫자에 적용되는 그라데이션 텍스트(글자 자체에만) */
 .run-gradient1-text,
 .run-gradient2-text {
-  display: inline-block;               /* 배경-클립 적용 안정화 */
+  display: inline-block;
   font-weight: 700;
   background-clip: text;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
 }
-.run-gradient1-text {
-  background-image: linear-gradient(to top right, #87ceeb, #d43e78);
-}
-.run-gradient2-text {
-  background-image: linear-gradient(to top right, #555555, #b9b7b7);
-}
+.run-gradient1-text { background-image: linear-gradient(to top right, #87ceeb, #d43e78); }
+.run-gradient2-text { background-image: linear-gradient(to top right, #555555, #b9b7b7); }
 
 .rating-bold { font-weight: bold; }
 
@@ -81,63 +77,66 @@
 .site-guide h3 { margin-bottom: 0.5rem; font-size: 1.25rem; color: #4F46E5; }
 .site-guide p  { line-height: 1.6; color: #333; }
 
-/* Rating 레벨 안내 */
+/* Rating/Runbility 안내 */
 .rating-legend { margin-top: 2rem; }
 .rating-legend h3 { font-size: 1.25rem; margin-bottom: 0.75rem; }
 
 /* 표 레이아웃 */
 .legend-table-wrap {
-  overflow-x: auto;                     /* 모바일에서만 가로 스크롤 */
+  overflow-x: auto;                 /* 모바일에서만 내부 스크롤 */
   -webkit-overflow-scrolling: touch;
 }
 .legend-table {
   width: 100%;
-  min-width: 560px;                     /* 칼럼이 겹치지 않게 최소폭 */
+  min-width: 560px;                 /* 좁은 화면에서 칼럼 겹침 방지 */
   border-collapse: collapse;
   text-align: center;
   table-layout: fixed;
 }
-
-/* 표 안의 텍스트 컬러를 강제 초기화 (iOS gradient 잔상 방지) */
-.legend-table, .legend-table * {
-  color: #222;
-  -webkit-text-fill-color: initial;
-  background-clip: border-box;
-}
-
 .legend-table th,
 .legend-table td {
   border: 1px solid #ddd;
   padding: 0.5rem;
-  white-space: nowrap;                  /* 숫자 줄바꿈 방지 */
+  white-space: nowrap;
 }
 
-/* 줄무늬 */
+/* 행마다 약한 줄무늬 */
 .legend-table tbody tr:nth-child(even) {
   background-color: #fafafad8;
 }
 
-/* 강조 행(마스터/로드) — 기본 컬러 유지, 텍스트만 span으로 그라데이션 */
-.legend-table .legend-emphasis td {
-  background-color: #fff;
-}
+/* 각 티어는 '행 전체'가 해당 색을 갖도록 (원래 동작 유지) */
+.legend-table tbody tr.run-bronze   { color: #cd7f32; }
+.legend-table tbody tr.run-silver   { color: #c0c0c0; }
+.legend-table tbody tr.run-gold     { color: #f5df62; }
+.legend-table tbody tr.run-platinum { color: #9fd787; }
+.legend-table tbody tr.run-diamond  { color: #87ceeb; }
+.legend-table tbody tr.run-ruby     { color: #e61565; }
 
-/* 표 하단 설명이 표와 겹치지 않도록 간격 확보 */
-.legend-footnote {
-  margin-top: 0.75rem;
-  line-height: 1.4;
+/* 마스터/로드는 셀 내부 span에만 그라데이션 텍스트 적용 */
+.legend-emphasis td { background: #fff; }
+.gradient1-text,
+.gradient2-text {
+  display: inline-block;
+  font-weight: 700;
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
+.gradient1-text { background-image: linear-gradient(to top right, #87ceeb, #d43e78); }
+.gradient2-text { background-image: linear-gradient(to top right, #555555, #b9b7b7); }
+
+/* 표 하단 설명 간격 */
+.legend-footnote { margin-top: 0.75rem; line-height: 1.4; }
 
 /* ---------- 모바일 최적화 ---------- */
 @media (max-width: 480px) {
-  .main-container { padding: 0 12px; }  /* 좌우 여백 축소 = 시각적 “너비” 감소 */
+  .main-container { padding: 0 12px; }  /* 헤더와 시각적 폭 일치 */
 
   .legend-table th,
   .legend-table td {
     padding: 0.4rem;
     font-size: 0.9rem;
   }
-  .rating-legend h3 {
-    font-size: 1.1rem;
-  }
+  .rating-legend h3 { font-size: 1.1rem; }
 }

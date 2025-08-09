@@ -5,9 +5,8 @@ import './Layout.css';
 
 type SimpleUser = { seq: number; name: string };
 
-const SHOW_DEBUG = false; // ← 디버깅 배지/표시 끄기
+const SHOW_DEBUG = false; // 디버그 배지 숨김
 
-// 현재 페이지가 GitHub Pages 하위 경로(/run_ac/)인지 감지해서 콜백 base 생성
 function getFrontBase(): string {
   const path = window.location.pathname;
   const base = path.startsWith('/run_ac') ? '/run_ac/' : '/';
@@ -37,7 +36,7 @@ const Header: React.FC = () => {
 
   const handleLogin = () => {
     const authBase = String(authApi.defaults.baseURL || '').replace(/\/$/, '');
-    const redirectBase = getFrontBase(); // ex) https://rslaam08.github.io/run_ac/
+    const redirectBase = getFrontBase();
     window.location.href = `${authBase}/google?origin=${encodeURIComponent(redirectBase)}`;
   };
 
@@ -47,7 +46,6 @@ const Header: React.FC = () => {
       .catch(err => console.error('Logout failed', err));
   };
 
-  // 유저 검색: /api/user 전체 받아서 매칭
   const handleSearch = async (e: FormEvent) => {
     e.preventDefault();
     const q = searchTerm.trim();
@@ -58,11 +56,9 @@ const Header: React.FC = () => {
       const res = await api.get<SimpleUser[]>('/user');
       const users = res.data;
 
-      // 1) 정확히(대소문자 무시)
       const exact = users.find(u => u.name.toLowerCase() === q.toLowerCase());
       if (exact) return navigate(`/user/${exact.seq}`);
 
-      // 2) 부분 일치
       const partial = users.find(u => u.name.toLowerCase().includes(q.toLowerCase()));
       if (partial) return navigate(`/user/${partial.seq}`);
 
@@ -81,7 +77,6 @@ const Header: React.FC = () => {
         <Link to="/" className="logo">run.ac</Link>
 
         <div className="right-wrap">
-          {/* 버튼 그룹 */}
           <div className="button-group">
             <Link to="/ranking" className="nav-btn">랭킹</Link>
 
@@ -104,7 +99,6 @@ const Header: React.FC = () => {
             <Link to="/calc" className="nav-btn">runbility 계산기</Link>
           </div>
 
-          {/* 유저 검색창 — 맨 오른쪽 */}
           <form className="user-search" onSubmit={handleSearch}>
             <input
               type="text"
@@ -118,10 +112,7 @@ const Header: React.FC = () => {
             </button>
           </form>
 
-          {/* 디버그 배지(임시 비표시) */}
-          {SHOW_DEBUG && (
-            <span className="debug-badge">DEBUG</span>
-          )}
+          {SHOW_DEBUG && <span className="debug-badge">DEBUG</span>}
         </div>
       </div>
     </header>

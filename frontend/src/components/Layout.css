@@ -1,3 +1,8 @@
+:root {
+  /* 페이지 공통 최대 폭(노트북에서도 과하지 않게 축소) */
+  --page-max: 760px;
+}
+
 /* 전체 레이아웃 */
 .layout {
   display: flex;
@@ -14,11 +19,14 @@
   box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
-/* 로고와 우측 영역 배치 */
+/* 로고와 우측 영역 배치 (본문과 동일한 max-width로 중앙 정렬) */
 .header-content {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  max-width: var(--page-max);
+  margin: 0 auto;
+  width: 100%;
 }
 
 /* 좌측 로고 */
@@ -105,22 +113,21 @@
   background: #f0f0f0;
 }
 
-/* 메인 컨테이너 */
+/* 메인 컨테이너(본문) — 헤더와 같은 최대 폭 */
 .container {
   flex: 1;
-  max-width: 1024px;
+  max-width: var(--page-max);
   margin: 0 auto;
   padding: 1rem;
 }
 
-/* 버튼/링크가 한 줄로 깨지지 않게 */
+/* 버튼/링크 줄바꿈 방지 */
 .nav-btn,
 .auth-btn,
 .mypage-btn {
   white-space: nowrap;
   min-width: max-content;
 }
-
 .user-search input,
 .user-search button {
   white-space: nowrap;

@@ -4,8 +4,7 @@ import { api, authApi } from '../api/apiClient';
 import './Layout.css';
 
 type SimpleUser = { seq: number; name: string };
-
-const SHOW_DEBUG = false; // 디버그 배지 숨김
+const SHOW_DEBUG = false;
 
 function getFrontBase(): string {
   const path = window.location.pathname;
@@ -14,24 +13,16 @@ function getFrontBase(): string {
 }
 
 const Header: React.FC = () => {
-  const [loggedIn, setLoggedIn] = useState<boolean>(false);
+  const [loggedIn, setLoggedIn] = useState(false);
   const [userSeq, setUserSeq]   = useState<number | null>(null);
-
   const [searchTerm, setSearchTerm] = useState('');
   const [searchBusy, setSearchBusy] = useState(false);
-
   const navigate = useNavigate();
 
   useEffect(() => {
     authApi.get('/me')
-      .then(res => {
-        setLoggedIn(true);
-        setUserSeq(res.data.seq);
-      })
-      .catch(() => {
-        setLoggedIn(false);
-        setUserSeq(null);
-      });
+      .then(res => { setLoggedIn(true); setUserSeq(res.data.seq); })
+      .catch(() => { setLoggedIn(false); setUserSeq(null); });
   }, []);
 
   const handleLogin = () => {
@@ -39,10 +30,8 @@ const Header: React.FC = () => {
     const redirectBase = getFrontBase();
     window.location.href = `${authBase}/google?origin=${encodeURIComponent(redirectBase)}`;
   };
-
   const handleLogout = () => {
-    authApi.post('/logout')
-      .then(() => (window.location.href = getFrontBase()))
+    authApi.post('/logout').then(() => (window.location.href = getFrontBase()))
       .catch(err => console.error('Logout failed', err));
   };
 
@@ -50,18 +39,14 @@ const Header: React.FC = () => {
     e.preventDefault();
     const q = searchTerm.trim();
     if (!q) return;
-
     try {
       setSearchBusy(true);
       const res = await api.get<SimpleUser[]>('/user');
       const users = res.data;
-
       const exact = users.find(u => u.name.toLowerCase() === q.toLowerCase());
       if (exact) return navigate(`/user/${exact.seq}`);
-
       const partial = users.find(u => u.name.toLowerCase().includes(q.toLowerCase()));
       if (partial) return navigate(`/user/${partial.seq}`);
-
       alert('해당 닉네임의 유저를 찾을 수 없습니다.');
     } catch (err) {
       console.error('Search failed:', err);
@@ -79,23 +64,17 @@ const Header: React.FC = () => {
         <div className="right-wrap">
           <div className="button-group">
             <Link to="/ranking" className="nav-btn">랭킹</Link>
-
             {loggedIn ? (
               <button className="nav-btn" onClick={handleLogout}>로그아웃</button>
             ) : (
               <button className="nav-btn" onClick={handleLogin}>Google 로그인</button>
             )}
-
             <button
               className="nav-btn mypage-btn"
-              onClick={() => {
-                if (!userSeq) alert('로그인해주세요.');
-                else navigate(`/user/${userSeq}`);
-              }}
+              onClick={() => (!userSeq ? alert('로그인해주세요.') : navigate(`/user/${userSeq}`))}
             >
               마이 페이지
             </button>
-
             <Link to="/calc" className="nav-btn">runbility 계산기</Link>
           </div>
 

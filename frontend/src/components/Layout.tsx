@@ -59,6 +59,7 @@ const Header: React.FC = () => {
   return (
     <header className="header">
       <div className="header-content">
+        {/* 위 행: 로고 + 버튼들 (가운데 정렬) */}
         <Link to="/" className="logo">run.ac</Link>
 
         <div className="right-wrap">
@@ -78,6 +79,7 @@ const Header: React.FC = () => {
             <Link to="/calc" className="nav-btn">runbility 계산기</Link>
           </div>
 
+          {/* 아래 행: 검색 (가운데, 단일 행) */}
           <form className="user-search" onSubmit={handleSearch}>
             <input
               type="text"

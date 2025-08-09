@@ -1,61 +1,53 @@
 import React, { useState, useEffect, FormEvent } from 'react';
 import { Link, Outlet, useNavigate } from 'react-router-dom';
+import { api, authApi } from '../api/apiClient';
 import './Layout.css';
-import { authApi, api, getAuthToken, clearAuthToken } from '../api/apiClient';
 
 type SimpleUser = { seq: number; name: string };
+
+const SHOW_DEBUG = false; // ← 디버깅 배지/표시 끄기
+
+// 현재 페이지가 GitHub Pages 하위 경로(/run_ac/)인지 감지해서 콜백 base 생성
+function getFrontBase(): string {
+  const path = window.location.pathname;
+  const base = path.startsWith('/run_ac') ? '/run_ac/' : '/';
+  return `${window.location.origin}${base}`;
+}
 
 const Header: React.FC = () => {
   const [loggedIn, setLoggedIn] = useState<boolean>(false);
   const [userSeq, setUserSeq]   = useState<number | null>(null);
-  const [whoami, setWhoami]     = useState<any>(null);
 
   const [searchTerm, setSearchTerm] = useState('');
   const [searchBusy, setSearchBusy] = useState(false);
+
   const navigate = useNavigate();
 
-  // ===== 현재 로그인 상태 확인 =====
-  const refreshAuth = async () => {
-    try {
-      console.debug('[Header] refreshAuth() start. token?', !!getAuthToken());
-      const res = await authApi.get('/me'); // Authorization: Bearer 자동 첨부
-      console.debug('[Header] /auth/me ok', res.data);
-      setLoggedIn(true);
-      setUserSeq(res.data.seq);
-      setWhoami(res.data);
-    } catch (err: any) {
-      console.warn('[Header] /auth/me fail', err?.response?.status, err?.response?.data);
-      setLoggedIn(false);
-      setUserSeq(null);
-      setWhoami(null);
-    }
-  };
-
   useEffect(() => {
-    refreshAuth();
+    authApi.get('/me')
+      .then(res => {
+        setLoggedIn(true);
+        setUserSeq(res.data.seq);
+      })
+      .catch(() => {
+        setLoggedIn(false);
+        setUserSeq(null);
+      });
   }, []);
 
   const handleLogin = () => {
-    // 백엔드가 구글로 리다이렉트 → 로그인 성공 시 /auth/callback#token=...으로 돌아옴
-    const url = `${authApi.defaults.baseURL}/google`;
-    console.debug('[Header] go login:', url);
-    window.location.href = url!;
+    const authBase = String(authApi.defaults.baseURL || '').replace(/\/$/, '');
+    const redirectBase = getFrontBase(); // ex) https://rslaam08.github.io/run_ac/
+    window.location.href = `${authBase}/google?origin=${encodeURIComponent(redirectBase)}`;
   };
 
-  const handleLogout = async () => {
-    try {
-      console.debug('[Header] logout(): clear token + hit /auth/logout');
-      clearAuthToken(); // JWT 제거(프론트 관점에선 이걸로 충분)
-      await authApi.post('/logout'); // 백엔드 세션 정리(있다면)
-    } catch (e) {
-      console.warn('[Header] logout call failed (ignored)', e);
-    } finally {
-      await refreshAuth();
-      navigate('/', { replace: true });
-    }
+  const handleLogout = () => {
+    authApi.post('/logout')
+      .then(() => (window.location.href = getFrontBase()))
+      .catch(err => console.error('Logout failed', err));
   };
 
-  // ===== 유저 검색 =====
+  // 유저 검색: /api/user 전체 받아서 매칭
   const handleSearch = async (e: FormEvent) => {
     e.preventDefault();
     const q = searchTerm.trim();
@@ -66,9 +58,11 @@ const Header: React.FC = () => {
       const res = await api.get<SimpleUser[]>('/user');
       const users = res.data;
 
+      // 1) 정확히(대소문자 무시)
       const exact = users.find(u => u.name.toLowerCase() === q.toLowerCase());
       if (exact) return navigate(`/user/${exact.seq}`);
 
+      // 2) 부분 일치
       const partial = users.find(u => u.name.toLowerCase().includes(q.toLowerCase()));
       if (partial) return navigate(`/user/${partial.seq}`);
 
@@ -87,6 +81,7 @@ const Header: React.FC = () => {
         <Link to="/" className="logo">run.ac</Link>
 
         <div className="right-wrap">
+          {/* 버튼 그룹 */}
           <div className="button-group">
             <Link to="/ranking" className="nav-btn">랭킹</Link>
 
@@ -109,6 +104,7 @@ const Header: React.FC = () => {
             <Link to="/calc" className="nav-btn">runbility 계산기</Link>
           </div>
 
+          {/* 유저 검색창 — 맨 오른쪽 */}
           <form className="user-search" onSubmit={handleSearch}>
             <input
               type="text"
@@ -121,14 +117,12 @@ const Header: React.FC = () => {
               {searchBusy ? '검색중…' : '검색'}
             </button>
           </form>
-        </div>
-      </div>
 
-      {/* ====== 디버그 박스 (필요 없으면 지우세요) ====== */}
-      <div style={{padding:'6px 12px', background:'#111827', color:'#E5E7EB', fontSize:12}}>
-        <b>Auth debug</b> — token? {getAuthToken() ? 'yes' : 'no'} | loggedIn: {String(loggedIn)} | userSeq: {String(userSeq)}
-        {whoami && (<span> | {whoami.name} (#{whoami.seq})</span>)}
-        <button style={{marginLeft:8}} onClick={refreshAuth}>recheck</button>
+          {/* 디버그 배지(임시 비표시) */}
+          {SHOW_DEBUG && (
+            <span className="debug-badge">DEBUG</span>
+          )}
+        </div>
       </div>
     </header>
   );

@@ -58,7 +58,7 @@ const MainPage: React.FC = () => {
     <div className="main-container">
       <section className="intro">
         <h1>run.ac</h1>
-        <h3>서울과학고 피무브 공식 사이트</h3>
+        <h3>서울과학고 피무브 <del>공식</del> 사이트</h3>
         <p>당신의 달리기 데이터를 기록하고<br/>다른 사람과 경쟁하세요!</p>
       </section>
 

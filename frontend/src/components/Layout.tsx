@@ -71,7 +71,7 @@ const Header: React.FC = () => {
   return (
     <header className="header">
       <div className="header-content">
-        <Link to="/" className="logo">run.ac</Link>
+        <Link to="/" className="logo">run.ac(beta)</Link>
 
         <div className="right-wrap">
           <div className="button-group">

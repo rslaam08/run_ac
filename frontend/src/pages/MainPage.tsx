@@ -58,15 +58,15 @@ const MainPage: React.FC = () => {
     <div className="main-container">
       <section className="intro">
         <h1>run.ac</h1>
-        <h3>서울과학고 피무브 <del>공식</del> 사이트</h3>
+        <h3>서울과학고 p=move</h3>
         <p>당신의 달리기 데이터를 기록하고<br/>다른 사람과 경쟁하세요!</p>
       </section>
 
       <section className="site-guide">
         <h3>run.ac를 사용하는 방법</h3>
         <p>
-          1, 휴대폰의 Nike Run Club 등의 어플로 달리기 기록을<br/>
-          측정하고, 스크린샷을 찍는다.<br/>
+          1, 휴대폰을 사용하여 Nike Run Club 등의 어플로<br/> 
+          달리기 기록을 측정하고 스크린샷을 찍는다.<br/>
           2, 로그인 후 마이 페이지로 들어가서<br/>
           기록 정보와 함께 스크린샷을 제출한다.<br/>
           3, 관리자의 판단 하에 24시간 내로 <br/>

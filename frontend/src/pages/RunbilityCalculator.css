@@ -59,3 +59,26 @@
 }
 
 /* run-xxx 색상은 기존 스타일을 그대로 사용 */
+
+
+/* 티어 색(하단 표와 동일) */
+.run-bronze{ color:#cd7f32; }
+.run-silver{ color:#c0c0c0; }
+.run-gold{ color:#f5df62; }
+.run-platinum{ color:#9fd787; }
+.run-diamond{ color:#87ceeb; }
+.run-ruby{ color:#e61565; }
+
+/* 그라데이션(글자 자체) */
+.run-gradient1-text,.run-gradient2-text,.run-legend{
+  display:inline-block; font-weight:700;
+  background-clip:text; -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+}
+.run-gradient1-text{ background-image:linear-gradient(to top right,#87ceeb,#d43e78); }
+.run-legend {
+  background: linear-gradient(to top right, #cfbb7c, #ebbfa1);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  font-weight: bold;
+}
+.run-gradient2-text{ background-image:linear-gradient(to top right,#555,#b9b7b7); }

@@ -40,7 +40,14 @@
   background-clip:text; -webkit-background-clip:text; -webkit-text-fill-color:transparent;
 }
 .run-gradient1-text{ background-image:linear-gradient(to top right,#87ceeb,#d43e78); }
+.run-legend {
+  background: linear-gradient(to top right, #FFD966, #F8CBAD);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  font-weight: bold;
+}
 .run-gradient2-text{ background-image:linear-gradient(to top right,#555,#b9b7b7); }
+
 .rating-bold{ font-weight:700; }
 
 /* 사이트 가이드 */

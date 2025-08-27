@@ -13,6 +13,7 @@ function getRatingClass(value: number): string {
   if (value < 7500)   return 'run-diamond';
   if (value < 10000)  return 'run-ruby';
   if (value < 15000)  return 'run-gradient1-text';  // Master
+  if (value < 25000)  return 'run-legend';
   return 'run-gradient2-text';                       // The Lord of Running
 }
 
@@ -117,9 +118,13 @@ const MainPage: React.FC = () => {
                 <td colSpan={4}><span className="gradient1-text">Master</span></td>
                 <td><span className="gradient1-text">10000 ~</span></td>
               </tr>
+              <tr className="run-legend">
+                <td colSpan={4}><span className="run-legend">Legend</span></td>
+                <td><span className="run-legend">15000 ~</span></td>
+              </tr>
               <tr className="legend-emphasis">
                 <td colSpan={4}><span className="gradient2-text">The Lord of Running</span></td>
-                <td><span className="gradient2-text">15000 ~</span></td>
+                <td><span className="gradient2-text">25000 ~</span></td>
               </tr>
             </tbody>
           </table>

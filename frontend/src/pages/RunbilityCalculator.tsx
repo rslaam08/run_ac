@@ -50,8 +50,8 @@ const RunbilityCalculator: React.FC = () => {
       setError('페이스 형식이 올바르지 않습니다. (예: 05:00)');
       return;
     }
-    if (paceSec < 180 || paceSec > 420) {
-      setError('페이스는 3:00 ~ 7:00 사이만 허용됩니다.');
+    if (paceSec < 160 || paceSec > 420) {
+      setError('페이스는 2:40 ~ 7:00 사이만 허용됩니다.');
       return;
     }
 

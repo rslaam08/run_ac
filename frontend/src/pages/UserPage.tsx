@@ -21,7 +21,8 @@ interface IRecord {
 const PAGE_SIZE = 10;
 
 const getRunClass = (val: number) => {
-  if (val >= 15000) return 'run-gradient2';
+  if (val >= 25000) return 'run-gradient2';
+  if (val >= 15000) return 'run-legend';
   if (val >= 10000) return 'run-gradient1';
   if (val >= 7500)  return 'run-ruby';
   if (val >= 5500)  return 'run-diamond';
@@ -34,7 +35,8 @@ const getRunClass = (val: number) => {
 
 // 평균 Top 5 runbility에 따른 칭호(title) 매핑 함수
 const getRunTitle = (avg: number): string => {
-  if (avg >= 15000) return 'The Lord of Running';
+  if (avg >= 25000) return 'The Lord of Running';
+  if (avg >= 15000) return 'Legend';
   if (avg >= 10000) return 'Master';
   if (avg >= 9300)  return 'Ruby I';
   if (avg >= 8700)  return 'Ruby II';

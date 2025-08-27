@@ -92,9 +92,9 @@ router.post('/', ensureJwt, upload.single('image'), async (req, res) => {
 
     // 검증 2) 페이스 3:00~7:00 (초/1km)
     const paceSecPerKm = timeSec / dist;
-    if (paceSecPerKm < 180 || paceSecPerKm > 420) {
+    if (paceSecPerKm < 160 || paceSecPerKm > 420) {
       safeUnlink(absFilePath);
-      return res.status(400).json({ error: '페이스는 1km 당 3:00 ~ 7:00 범위만 업로드할 수 있습니다.' });
+      return res.status(400).json({ error: '페이스는 1km 당 2:40 ~ 7:00 범위만 업로드할 수 있습니다.' });
     }
 
     // 검증 3) 이미지 필수

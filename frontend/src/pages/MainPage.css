@@ -78,12 +78,13 @@
 
 /* 마스터/로드 — 글자 자체 그라데이션 */
 .legend-emphasis td{ background:#fff; }
-.gradient1-text,.gradient2-text{
+.gradient1-text,.gradient2-text,.gradient3-text{
   display:inline-block; font-weight:700;
   background-clip:text; -webkit-background-clip:text; -webkit-text-fill-color:transparent;
 }
 .gradient1-text{ background-image:linear-gradient(to top right,#87ceeb,#d43e78); }
 .gradient2-text{ background-image:linear-gradient(to top right,#555,#b9b7b7); }
+.gradient3-text{ background-image:linear-gradient(to top right, #cfbb7c, #ebbfa1); }
 
 .legend-footnote{ margin-top:.6rem; line-height:1.4; }
 

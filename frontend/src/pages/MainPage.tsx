@@ -118,9 +118,9 @@ const MainPage: React.FC = () => {
                 <td colSpan={4}><span className="gradient1-text">Master</span></td>
                 <td><span className="gradient1-text">10000 ~</span></td>
               </tr>
-              <tr className="run-legend">
-                <td colSpan={4}><span className="run-legend">Legend</span></td>
-                <td><span className="run-legend">15000 ~</span></td>
+              <tr className="legend-emphasis">
+                <td colSpan={4}><span className="gradient3-text">Legend</span></td>
+                <td><span className="gradient3-text">15000 ~</span></td>
               </tr>
               <tr className="legend-emphasis">
                 <td colSpan={4}><span className="gradient2-text">The Lord of Running</span></td>

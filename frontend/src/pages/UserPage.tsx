@@ -197,8 +197,8 @@ const UserPage: React.FC = () => {
 
     // 페이스: 180 ~ 420초/1km
     const paceSecPerKm = timeSec / distance;
-    if (paceSecPerKm < 180 || paceSecPerKm > 420) {
-      alert('1km 페이스가 180초(3:00) 이상, 420초(7:00) 이하인 기록만 업로드할 수 있습니다.');
+    if (paceSecPerKm < 160 || paceSecPerKm > 420) {
+      alert('1km 페이스가 160초(2:40) 이상, 420초(7:00) 이하인 기록만 업로드할 수 있습니다.');
       return;
     }
 

@@ -3,7 +3,9 @@ import { getRunbility } from '../utils/runbility';
 import './RunbilityCalculator.css';
 
 const getRunClass = (val: number) => {
-  if (val >= 15000) return 'run-gradient2';
+
+  if (val >= 25000) return 'run-gradient2';
+  if (val >= 15000) return 'run-legend';
   if (val >= 10000) return 'run-gradient1';
   if (val >= 7500)  return 'run-ruby';
   if (val >= 5500)  return 'run-diamond';

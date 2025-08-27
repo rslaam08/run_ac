@@ -102,7 +102,12 @@
   -webkit-text-fill-color: transparent;
   font-weight: bold;
 }
-
+.run-legend {
+  background: linear-gradient(to top right, #b9a25d, #ebbfa1);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  font-weight: bold;
+}
 /* Gradient 15,000~: dark gray → light gray */
 .run-gradient2 {
   background: linear-gradient(to top right, #555555, #b9b7b7);

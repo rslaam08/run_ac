@@ -35,13 +35,13 @@
 .run-ruby{ color:#e61565; }
 
 /* 그라데이션(글자 자체) */
-.run-gradient1-text,.run-gradient2-text{
+.run-gradient1-text,.run-gradient2-text,.run-legend{
   display:inline-block; font-weight:700;
   background-clip:text; -webkit-background-clip:text; -webkit-text-fill-color:transparent;
 }
 .run-gradient1-text{ background-image:linear-gradient(to top right,#87ceeb,#d43e78); }
 .run-legend {
-  background: linear-gradient(to top right, #FFD966, #F8CBAD);
+  background: linear-gradient(to top right, #b9a25d, #ebbfa1);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   font-weight: bold;

@@ -15,7 +15,8 @@ function getRatingClass(value: number): string {
   if (value < 7500)   return 'run-diamond';
   if (value < 10000)  return 'run-ruby';
   if (value < 15000)  return 'run-gradient1';
-                     return 'run-gradient2';
+  if (value < 25000)  return 'run-legend';
+  return 'run-gradient2';
 }
 
 interface IUser {

@@ -41,7 +41,7 @@
 }
 .run-gradient1-text{ background-image:linear-gradient(to top right,#87ceeb,#d43e78); }
 .run-legend {
-  background: linear-gradient(to top right, #b9a25d, #ebbfa1);
+  background: linear-gradient(to top right, #cfbb7c, #ebbfa1);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   font-weight: bold;

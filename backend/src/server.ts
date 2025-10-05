@@ -43,17 +43,23 @@ app.set('trust proxy', 1);
 // ============================= CORS & 기본 미들웨어 순서 =============================
 // ✅ CORS: *반드시* 라우터보다 먼저
 const corsOptions: CorsOptions = {
+  // 절대 에러를 던지지 말 것! (cb(new Error(...)) 금지)
   origin(origin, cb) {
-    if (!origin) return cb(null, true); // same-origin or server-side
+    // same-origin 요청(Origin 헤더 없음)은 허용
+    if (!origin) return cb(null, true);
+
     const norm = origin.replace(/\/$/, '');
-    const ok = ALLOWED_ORIGINS.map(o => o.replace(/\/$/, ''));
-    return cb(null, ok.includes(norm));
+    const okSet = new Set(ALLOWED_ORIGINS.map(o => o.replace(/\/$/, '')));
+
+    // 허용: true / 비허용: false 로 “조용히” 넘김
+    cb(null, okSet.has(norm));
   },
   credentials: true, // axios withCredentials 대응
-  methods: ['GET','POST','PUT','PATCH','DELETE','OPTIONS'],
-  allowedHeaders: ['Content-Type','Authorization'],
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'], // 'authorization' 소문자로 와도 OK(대소문자 무시)
   exposedHeaders: ['Content-Type'],
   maxAge: 86400,
+  optionsSuccessStatus: 204, // 프리플라이트 상태코드 고정
 };
 
 app.use(cors(corsOptions));

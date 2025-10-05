@@ -20,11 +20,11 @@ type MarketItem = {
 
 type SlotLog = {
   slotId: string;
-  multiplier: number;
+  multiplier: number | null; // 미확정이면 null
   participants: {
     userSeq: number;
     amount: number;
-    payout: number;
+    payout: number | null;   // 미확정이면 null
   }[];
 };
 
@@ -43,7 +43,6 @@ const EventPage: React.FC = () => {
       const r = await eventApi.status();
       setStatus(r.data);
     } catch {
-      // 비로그인 시 401 가능
       setStatus(null);
     }
   };
@@ -87,42 +86,37 @@ const EventPage: React.FC = () => {
       const t = localStorage.getItem('runac_jwt');
       if (t) {
         const [, p] = t.split('.');
-        const payload = JSON.parse(
-          atob(p.replace(/-/g, '+').replace(/_/g, '/'))
-        );
+        const payload = JSON.parse(atob(p.replace(/-/g, '+').replace(/_/g, '/')));
         setIsAdmin(payload?.seq === 1);
       }
-    } catch {
-      // noop
-    }
+    } catch {}
+  }, []);
+
+  // 자동 새로고침(선택): 30초마다 전체 로그/잔액 리프레시
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      loadStatus();
+      loadAllLogs();
+    }, 30000);
+    return () => clearInterval(id);
   }, []);
 
   return (
     <div className="event-page">
       <div className="event-tabs">
-        <button
-          className={tab === 'desc' ? 'active' : ''}
-          onClick={() => setTab('desc')}
-        >
+        <button className={tab === 'desc' ? 'active' : ''} onClick={() => setTab('desc')}>
           추석 이벤트🌕 안내
         </button>
-        <button
-          className={tab === 'casino' ? 'active' : ''}
-          onClick={() => setTab('casino')}
-        >
+        <button className={tab === 'casino' ? 'active' : ''} onClick={() => setTab('casino')}>
           보름달 도박장
         </button>
-        <button
-          className={tab === 'market' ? 'active' : ''}
-          onClick={() => setTab('market')}
-        >
+        <button className={tab === 'market' ? 'active' : ''} onClick={() => setTab('market')}>
           보름달 마켓
         </button>
       </div>
 
       <div className="event-balance">
-        보름달 코인 🌕:{' '}
-        {Math.floor(status?.moon ?? 0).toLocaleString()}
+        보름달 코인 🌕: {Math.floor(status?.moon ?? 0).toLocaleString()}
       </div>
 
       {tab === 'desc' && (
@@ -130,20 +124,14 @@ const EventPage: React.FC = () => {
           <h2>페이지 설명</h2>
           <p>이곳에 설명을 입력하세요</p>
           <p>이벤트 기간: 2025-10-06 ~ 2025-10-12 (KST)</p>
-          <p>
-            도박장 오픈: 매일 21:00~23:59 / 각 10분 슬롯 (:01~:09 베팅, :10
-            결과)
-          </p>
+          <p>도박장 오픈: 매일 21:00~23:59 / 각 10분 슬롯 (:01~:09 베팅, :10 결과)</p>
         </section>
       )}
 
       {tab === 'casino' && (
         <section className="event-section">
           <h2>보름달 도박장</h2>
-          <p>
-            현재 슬롯: {status?.nowSlotId} (
-            {status?.isBettingWindow ? '베팅 가능' : '대기'})
-          </p>
+          <p>현재 슬롯: {status?.nowSlotId} ({status?.isBettingWindow ? '베팅 가능' : '대기'})</p>
 
           <div className="bet-box">
             <input
@@ -157,8 +145,7 @@ const EventPage: React.FC = () => {
               onClick={async () => {
                 try {
                   const n = Number(amount);
-                  if (!Number.isFinite(n) || n <= 0)
-                    return alert('금액을 올바르게 입력');
+                  if (!Number.isFinite(n) || n <= 0) return alert('금액을 올바르게 입력');
                   await eventApi.bet(n);
                   alert('베팅 완료!');
                   setAmount('');
@@ -171,21 +158,6 @@ const EventPage: React.FC = () => {
             >
               베팅
             </button>
-
-            <button
-              onClick={async () => {
-                try {
-                  const r = await eventApi.resolve();
-                  alert('슬롯 결과: x' + r.data.multiplier);
-                  await loadStatus();
-                  await loadAllLogs();
-                } catch (e: any) {
-                  alert(e?.response?.data?.error || '결과 처리 실패');
-                }
-              }}
-            >
-              결과 갱신
-            </button>
           </div>
 
           <div className="logs">
@@ -194,13 +166,14 @@ const EventPage: React.FC = () => {
             {logs.map((slot) => (
               <div key={slot.slotId} className="slot-log">
                 <h4>
-                  {slot.slotId} — 결과 x{slot.multiplier}
+                  {slot.slotId} — 결과 {slot.multiplier == null ? '(미확정)' : `x${slot.multiplier}`}
                 </h4>
                 <ul>
                   {slot.participants.map((p, idx) => (
                     <li key={`${slot.slotId}-${p.userSeq}-${idx}`}>
-                      user #{p.userSeq} — {p.amount.toLocaleString()}🌕 →{' '}
-                      {p.payout.toLocaleString()}🌕
+                      user #{p.userSeq} — {p.amount.toLocaleString()}🌕
+                      {' → '}
+                      {p.payout == null ? '-' : `${p.payout.toLocaleString()}🌕`}
                     </li>
                   ))}
                 </ul>
@@ -214,9 +187,7 @@ const EventPage: React.FC = () => {
         <section className="event-section">
           <h2>보름달 마켓</h2>
 
-          {marketError && (
-            <div className="text-red-600 text-sm mb-2">{marketError}</div>
-          )}
+          {marketError && <div className="text-red-600 text-sm mb-2">{marketError}</div>}
 
           {(!items || items.length === 0) && !marketError && (
             <div className="text-gray-500 text-sm mb-2">
@@ -229,9 +200,7 @@ const EventPage: React.FC = () => {
               <div key={it.id} className="market-card">
                 <div className="img-holder">[이미지 자리]</div>
                 <div className="name">{it.name}</div>
-                <div className="price">
-                  {it.price.toLocaleString()} 🌕
-                </div>
+                <div className="price">{it.price.toLocaleString()} 🌕</div>
                 <button
                   disabled={!!it.bought}
                   onClick={async () => {
@@ -258,8 +227,7 @@ const EventPage: React.FC = () => {
               <ul>
                 {purchases.map((p: any) => (
                   <li key={p._id}>
-                    user #{p.userSeq} — {p.itemId} —{' '}
-                    {p.price.toLocaleString()}🌕
+                    user #{p.userSeq} — {p.itemId} — {p.price.toLocaleString()}🌕
                   </li>
                 ))}
               </ul>

@@ -14,6 +14,12 @@ import userRouter from './routes/user';
 import recordRouter from './routes/record';
 import eventRouter from './routes/event';
 import './passportConfig';
+// 자동 결과 확정용
+import MoonSlot from './models/MoonSlot';
+import MoonBet from './models/MoonBet';
+import User from './models/User';
+import { getEventSlotId, isWithinEvent } from './utils/moon';
+
 
 const app = express();
 
@@ -138,3 +144,48 @@ app.use((
 app.listen(PORT, () => {
   console.log(`🚀 Server running on ${PUBLIC_API_URL}`);
 });
+
+// === 🕓 매 10분 정각마다 자동 결과 확정 ===
+async function autoResolveCurrentSlot() {
+  if (!isWithinEvent()) return;
+
+  const slotId = getEventSlotId(new Date());
+  const exists = await MoonSlot.findOne({ slotId });
+  if (exists) return; // 이미 확정됨
+
+  // 확률 분포에 따라 multiplier 결정
+  const r = Math.random() * 100;
+  let mul = 0;
+  if (r < 30) mul = 0;
+  else if (r < 55) mul = 0.5;
+  else if (r < 75) mul = 1;
+  else if (r < 90) mul = 1.5;
+  else {
+    const r2 = (r - 90) * 10; // 0~100
+    if (r2 < 60) mul = 2;
+    else if (r2 < 96) mul = 4;
+    else mul = 8;
+  }
+
+  const slot = await MoonSlot.create({ slotId, multiplier: mul });
+  console.log(`[AutoResolve] ${slotId} → x${mul}`);
+
+  const bets = await MoonBet.find({ slotId });
+  for (const b of bets) {
+    const u = await User.findOne({ seq: b.userSeq });
+    if (!u) continue;
+    const reward = Number(b.amount) * mul;
+    u.moonPoints = Number(u.moonPoints || 0) + reward;
+    await u.save();
+    b.set('payout', reward);
+    await b.save();
+  }
+}
+
+// 초당 체크하여 00초에만 실행 (…:00, …:10, …:20, …)
+setInterval(() => {
+  const now = new Date();
+  if (now.getMinutes() % 10 === 0 && now.getSeconds() === 0) {
+    autoResolveCurrentSlot().catch(e => console.error('Auto resolve error', e));
+  }
+}, 1000);

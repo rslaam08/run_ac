@@ -1,9 +1,12 @@
-// frontend/src/api/apiClient.ts
 import axios from 'axios';
 
 const isProd = process.env.NODE_ENV === 'production';
+
+// 배포(깃허브 페이지): 백엔드(Render) 도메인
 const PROD_API_BASE = 'https://sshsrun-api.onrender.com';
+// 로컬 개발
 const DEV_API_BASE = 'http://localhost:4000';
+
 const base = isProd ? PROD_API_BASE : DEV_API_BASE;
 
 export const api = axios.create({
@@ -19,31 +22,35 @@ export const authApi = axios.create({
 export const eventApi = {
   status:    () => api.get('/event/status'),
   bet:       (amount: number) => api.post('/event/bet', { amount }),
-  resolve:   () => api.post('/event/resolve'),
+  // resolve:   () => api.post('/event/resolve'),   // ❌ 제거(자동화됨)
   logs:      (slotId: string) => api.get(`/event/logs/${slotId}`),
-  allLogs:   () => api.get('/event/logs/all'),   // ✅ 전체 로그 조회 추가
+  allLogs:   () => api.get('/event/logs/all'),       // ✅ 전체 로그
   market:    () => api.get('/event/market'),
   buy:       (itemId: string) => api.post('/event/market/buy', { itemId }),
-  purchases: () => api.get('/event/market/purchases'),
+  purchases: () => api.get('/event/market/purchases'), // admin only
 };
 
-// JWT 보관/주입
+// ===== 토큰 보관/주입 헬퍼 =====
 const TOKEN_KEY = 'runac_jwt';
-export function getAuthToken() {
-  return localStorage.getItem(TOKEN_KEY);
+
+export function getAuthToken(): string | null {
+  const t = localStorage.getItem(TOKEN_KEY);
+  return t;
 }
+
 export function setAuthToken(token: string) {
   localStorage.setItem(TOKEN_KEY, token);
   api.defaults.headers.common.Authorization = `Bearer ${token}`;
   authApi.defaults.headers.common.Authorization = `Bearer ${token}`;
 }
+
 export function clearAuthToken() {
   localStorage.removeItem(TOKEN_KEY);
   delete api.defaults.headers.common.Authorization;
   delete authApi.defaults.headers.common.Authorization;
 }
 
-// 인터셉터
+// 요청 인터셉터: Authorization 자동 첨부
 api.interceptors.request.use((cfg) => {
   const t = getAuthToken();
   if (t) cfg.headers.Authorization = `Bearer ${t}`;
@@ -54,10 +61,3 @@ authApi.interceptors.request.use((cfg) => {
   if (t) cfg.headers.Authorization = `Bearer ${t}`;
   return cfg;
 });
-
-// 부팅 시 저장된 토큰 주입
-const bootToken = getAuthToken();
-if (bootToken) {
-  api.defaults.headers.common.Authorization = `Bearer ${bootToken}`;
-  authApi.defaults.headers.common.Authorization = `Bearer ${bootToken}`;
-}

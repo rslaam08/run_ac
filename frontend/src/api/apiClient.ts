@@ -16,14 +16,14 @@ export const authApi = axios.create({
 });
 
 export const eventApi = {
-  status:    () => api.get('/event/status', { headers: { 'Cache-Control': 'no-cache' } }),
-  bet:       (amount: number) => api.post('/event/bet', { amount }, { headers: { 'Cache-Control': 'no-cache' } }),
-  logs:      (slotId: string) => api.get(`/event/logs/${slotId}`, { headers: { 'Cache-Control': 'no-cache' } }),
-  allLogs:   () => api.get('/event/logs/all', { headers: { 'Cache-Control': 'no-cache' } }),
-  latest:    () => api.get('/event/logs/latest', { headers: { 'Cache-Control': 'no-cache' } }), // ✅ 추가
-  market:    () => api.get('/event/market', { headers: { 'Cache-Control': 'no-cache' } }),
-  buy:       (itemId: string) => api.post('/event/market/buy', { itemId }, { headers: { 'Cache-Control': 'no-cache' } }),
-  purchases: () => api.get('/event/market/purchases', { headers: { 'Cache-Control': 'no-cache' } }),
+  status:    () => api.get('/event/status'),
+  bet:       (amount: number) => api.post('/event/bet', { amount }),
+  resolve:   () => api.post('/event/resolve'),
+  logs:      (slotId: string) => api.get(`/event/logs/${slotId}`),
+  logsAll:   () => api.get('/event/logs/all'),
+  market:    () => api.get('/event/market'),
+  buy:       (itemId: string) => api.post('/event/market/buy', { itemId }),
+  purchases: () => api.get('/event/market/purchases'), // admin only
 };
 
 // ===== 토큰 보관/주입 헬퍼 =====

@@ -1,31 +1,16 @@
-import { Schema, model, InferSchemaType } from 'mongoose';
+// backend/src/models/MoonBet.ts
+import mongoose from 'mongoose';
 
-const MoonBetSchema = new Schema(
-  {
-    /** 슬롯 식별자 (예: 20251006-21-10) */
-    slotId:  { type: String, required: true, index: true },
+const MoonBetSchema = new mongoose.Schema({
+  slotId: { type: String, required: true }, // 기존에 있으면 유지 (혹은 per-bet slotId 사용)
+  userSeq: { type: Number, required: true },
+  amount: { type: Number, required: true },
+  // 추가 필드들:
+  multiplier: { type: Number, default: 0 },    // 결정된 배수 (즉시 결정)
+  payout: { type: Number, default: 0 },        // 지급액(amount * multiplier)
+  resolvedAt: { type: Date, default: null },   // 결과가 결정된 시각
+}, {
+  timestamps: true
+});
 
-    /** 유저 고유 seq */
-    userSeq: { type: Number, required: true, index: true },
-
-    /** 베팅 금액(보름달 코인) */
-    amount:  { type: Number, required: true, min: 1 },
-
-    /**
-     * 정산 금액(= amount * multiplier)
-     * - 결과 확정 전: null
-     * - 결과 확정 후: 0, 0.5배, 1배, 1.5배, 2배, 4배, 8배 등 계산된 숫자
-     */
-    payout:  { type: Number, default: null },
-  },
-  {
-    timestamps: true, // createdAt, updatedAt
-    versionKey: false // __v 제거(선택)
-  }
-);
-
-/** 같은 슬롯에 같은 유저가 중복 베팅 못 하도록 보장 */
-MoonBetSchema.index({ slotId: 1, userSeq: 1 }, { unique: true });
-
-export type MoonBetDoc = InferSchemaType<typeof MoonBetSchema>;
-export default model<MoonBetDoc>('MoonBet', MoonBetSchema);
+export default mongoose.model('MoonBet', MoonBetSchema);

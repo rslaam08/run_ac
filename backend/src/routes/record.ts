@@ -1,4 +1,3 @@
-// backend/src/routes/record.ts
 import path from 'path';
 import fs from 'fs';
 import express from 'express';
@@ -11,11 +10,7 @@ import User from '../models/User';
 
 const router = express.Router();
 
-/** ─────────────────────────────
- *  업로드 디렉터리 (영구 디스크 권장)
- *  - Render: UPLOAD_DIR=/data/uploads 로 설정 권장
- *  - 미설정 시 프로젝트 내부 /uploads 사용
- * ───────────────────────────── */
+/** 업로드 디렉터리 (영구 디스크 권장: UPLOAD_DIR=/data/uploads) */
 const UPLOAD_DIR = process.env.UPLOAD_DIR || path.join(__dirname, '../../uploads');
 if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 
@@ -31,7 +26,7 @@ const storage = multer.diskStorage({
 
 const upload = multer({
   storage,
-  limits: { fileSize: 50 * 1024 * 1024 }, // 50MB
+  limits: { fileSize: 50 * 1024 * 1024 },
   fileFilter: (_req, file, cb) => {
     if (file.mimetype.startsWith('image/')) cb(null, true);
     else cb(new multer.MulterError('LIMIT_UNEXPECTED_FILE', 'image'));
@@ -52,19 +47,26 @@ function safeUnlink(absPath: string | null | undefined) {
   fs.promises.unlink(absPath).catch(() => {});
 }
 
-/** ─────────────────────────────
- *  [POST] /api/records
- *  새 기록 업로드 (승인 대기)
- *  body: time(HH:MM:SS), distance(km), date(YYYY-MM-DD), image(file)
- *  보호: JWT
- * ───────────────────────────── */
+/** JWT 페이로드 얻기 (ensureJwt 가 어떤 필드에 넣든 대응) */
+function getJwtUser(req: express.Request): { seq: number; name?: string; isAdmin?: boolean } | null {
+  const a = (req as any).jwtUser;
+  const b = (req as any).auth;
+  return (a && typeof a.seq === 'number') ? a
+       : (b && typeof b.seq === 'number') ? b
+       : null;
+}
+
+/** [POST] /api/records — 새 기록 업로드(승인 대기) */
 router.post('/', ensureJwt, upload.single('image'), async (req, res) => {
   const absFilePath = req.file?.path;
 
   try {
-    // JWT에서 사용자
-    const me = (req as any).jwtUser as { seq: number };
-    const userSeq: number = me?.seq;
+    const me = getJwtUser(req);
+    if (!me) {
+      safeUnlink(absFilePath);
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+    const userSeq = me.seq;
 
     const { time, distance, date } = req.body as {
       time: string;
@@ -79,7 +81,7 @@ router.post('/', ensureJwt, upload.single('image'), async (req, res) => {
       return res.status(400).json({ error: '시간 형식이 올바르지 않습니다. (HH:MM:SS)' });
     }
 
-    // 거리 파싱(km)
+    // 거리 파싱
     const dist = parseFloat(distance);
     if (!Number.isFinite(dist)) {
       safeUnlink(absFilePath);
@@ -92,7 +94,7 @@ router.post('/', ensureJwt, upload.single('image'), async (req, res) => {
       return res.status(400).json({ error: '거리는 0.5km 이상 10km 이하만 업로드할 수 있습니다.' });
     }
 
-    // 검증 2) 페이스 3:00~7:00 (초/1km)
+    // 검증 2) 페이스 2:40~7:00 (초/1km)
     const paceSecPerKm = timeSec / dist;
     if (paceSecPerKm < 160 || paceSecPerKm > 420) {
       safeUnlink(absFilePath);
@@ -104,7 +106,7 @@ router.post('/', ensureJwt, upload.single('image'), async (req, res) => {
       return res.status(400).json({ error: '이미지 파일이 필요합니다.' });
     }
 
-    // 이미지 절대 URL 구성
+    // 이미지 절대 URL
     const filename = path.basename(req.file.path);
     const base =
       (process.env.PUBLIC_API_URL?.replace(/\/$/, '')) ||
@@ -156,7 +158,7 @@ router.get('/user/:seq', async (req, res) => {
 
 /** (관리자) 승인 대기 목록 — GET /api/records/pending */
 router.get('/pending', ensureJwt, async (req, res) => {
-  const me = (req as any).jwtUser as { isAdmin?: boolean };
+  const me = getJwtUser(req);
   if (!me?.isAdmin) return res.status(403).json({ error: 'Forbidden' });
 
   const list = await Record.find({ status: 'pending' })
@@ -166,7 +168,7 @@ router.get('/pending', ensureJwt, async (req, res) => {
 
 /** (관리자) 승인 — PUT /api/records/:id/approve */
 router.put('/:id/approve', ensureJwt, async (req, res) => {
-  const me = (req as any).jwtUser as { isAdmin?: boolean };
+  const me = getJwtUser(req);
   if (!me?.isAdmin) return res.status(403).json({ error: 'Forbidden' });
 
   const id = req.params.id;
@@ -174,19 +176,19 @@ router.put('/:id/approve', ensureJwt, async (req, res) => {
 
   const updated = await Record.findByIdAndUpdate(id, { status: 'approved' }, { new: true });
   if (updated && isWithinEvent(new Date())) {
-  const rb = getRunbility(updated.timeSec, updated.distance);
-  const u = await User.findOne({ seq: updated.userSeq });
-  if (u) {
-    u.moonPoints = mergeMoon(u.moonPoints || 0, rb);
-    await u.save();
+    const rb = getRunbility(updated.timeSec, updated.distance);
+    const u = await User.findOne({ seq: updated.userSeq });
+    if (u) {
+      u.moonPoints = mergeMoon(Number(u.moonPoints || 0), rb);
+      await u.save();
+    }
   }
-}
   res.json(updated);
 });
 
 /** (관리자) 거절 — PUT /api/records/:id/reject */
 router.put('/:id/reject', ensureJwt, async (req, res) => {
-  const me = (req as any).jwtUser as { isAdmin?: boolean };
+  const me = getJwtUser(req);
   if (!me?.isAdmin) return res.status(403).json({ error: 'Forbidden' });
 
   const id = req.params.id;

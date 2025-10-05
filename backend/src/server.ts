@@ -3,7 +3,8 @@ import express from 'express';
 import mongoose from 'mongoose';
 import passport from 'passport';
 import session from 'express-session';
-import cors, { CorsOptionsDelegate } from 'cors';
+// ❌ cors 패키지 없이 직접 처리해도 됩니다. (Express 5 와일드카드 이슈 회피)
+// import cors from 'cors';
 import path from 'path';
 import multer from 'multer';
 import MongoStore from 'connect-mongo';
@@ -14,7 +15,7 @@ import recordRouter from './routes/record';
 import eventRouter from './routes/event';
 import './passportConfig';
 
-// 🚨 자동 정산에 필요한 것들
+// (선택) 자동 정산 관련 유틸/모델이 있다면 유지
 import MoonSlot from './models/MoonSlot';
 import MoonBet from './models/MoonBet';
 import User from './models/User';
@@ -25,11 +26,14 @@ const app = express();
 const isProd = process.env.NODE_ENV === 'production';
 const PORT = Number(process.env.PORT || 4000);
 
-// 허용 Origin
+// 허용 오리진 구성
 const DEFAULT_ORIGINS = ['http://localhost:3000', 'https://rslaam08.github.io'];
 const CLIENT_URLS = (process.env.CLIENT_URLS || process.env.CLIENT_URL || '')
-  .split(',').map(s => s.trim()).filter(Boolean);
-const ALLOWED_ORIGINS = CLIENT_URLS.length ? CLIENT_URLS : DEFAULT_ORIGINS;
+  .split(',')
+  .map(s => s.trim())
+  .filter(Boolean);
+const ALLOWED_ORIGINS = (CLIENT_URLS.length ? CLIENT_URLS : DEFAULT_ORIGINS)
+  .map(o => o.replace(/\/$/, '')); // 말미 슬래시 제거
 
 const PUBLIC_API_URL = (process.env.PUBLIC_API_URL || `http://localhost:${PORT}`).replace(/\/$/, '');
 const UPLOAD_DIR = process.env.UPLOAD_DIR || path.join(__dirname, '../uploads');
@@ -40,33 +44,38 @@ if (!MONGO) {
   process.exit(1);
 }
 
+// 프록시 뒤 secure 쿠키 설정용
 app.set('trust proxy', 1);
 
-// CORS (라우터보다 먼저)
-const corsOptions: CorsOptionsDelegate = (req, cb) => {
-  const origin = req.headers['origin'] as string | undefined;
-  if (!origin) return cb(null, { origin: true, credentials: true });
+// ======== ✅ CORS를 직접 처리 (Express 5 호환, 와일드카드 회피) ========
+app.use((req, res, next) => {
+  const origin = (req.headers.origin || '').replace(/\/$/, '');
+  const isAllowed = origin && ALLOWED_ORIGINS.includes(origin);
 
-  const norm = origin.replace(/\/$/, '');
-  const ok = new Set([...ALLOWED_ORIGINS.map(o => o.replace(/\/$/, ''))]);
-  if (ok.has(norm)) {
-    cb(null, {
-      origin: true,
-      credentials: true,
-      methods: ['GET','POST','PUT','PATCH','DELETE','OPTIONS'],
-      allowedHeaders: ['Content-Type','Authorization'],
-      exposedHeaders: ['Content-Type'],
-      maxAge: 86400,
-    });
-  } else {
-    cb(new Error(`CORS blocked for origin: ${origin}`));
+  if (isAllowed) {
+    // 요청 보낸 오리진만 정확히 반영
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    // 캐시 중개자들이 오리진에 따라 응답 달라짐을 인지하도록
+    res.setHeader('Vary', 'Origin');
   }
-};
-app.use(cors(corsOptions));
+  // 프리플라이트/표준 헤더
+  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Authorization, Content-Type');
+  // 우리는 JWT를 Authorization 헤더로 보내므로 쿠키 공유 안 함
+  res.setHeader('Access-Control-Allow-Credentials', 'false');
+  // 캐시 금지(네트워크 탭 304/캐시 이슈 방지)
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
 
-// 캐시 비활성(ETag 끔)
+  // 프리플라이트는 여기서 끝
+  if (req.method === 'OPTIONS') return res.sendStatus(204);
+
+  next();
+});
+
+// ======== 나머지 미들웨어 ========
 app.set('etag', false);
-
 app.use(express.json());
 app.use('/uploads', express.static(UPLOAD_DIR));
 
@@ -81,8 +90,8 @@ app.use(session({
     autoRemove: 'native'
   }),
   cookie: isProd
-    ? { maxAge: 24*60*60*1000, sameSite: 'none', secure: true }
-    : { maxAge: 24*60*60*1000, sameSite: 'lax',  secure: false }
+    ? { maxAge: 24 * 60 * 60 * 1000, sameSite: 'none', secure: true }
+    : { maxAge: 24 * 60 * 60 * 1000, sameSite: 'lax',  secure: false }
 }));
 
 app.use(passport.initialize());
@@ -92,11 +101,13 @@ mongoose.connect(MONGO)
   .then(() => console.log('✅ MongoDB connected'))
   .catch(err => console.error('❌ MongoDB connection error:', err));
 
+// ======== 라우터 (CORS/세션/패스포트 이후) ========
 app.use('/auth',        authRouter);
 app.use('/api/user',    userRouter);
 app.use('/api/records', recordRouter);
 app.use('/api/event',   eventRouter);
 
+// 헬스체크
 app.get('/', (_req, res) => {
   res.json({
     status: 'ok',
@@ -133,16 +144,14 @@ app.listen(PORT, () => {
   console.log(`🚀 Server running on ${PUBLIC_API_URL}`);
 });
 
-
-// ============= 🕓 자동 정산 스케줄러 (매 10분 정각) =============
+// ======== (선택) 자동 정산 스케줄러가 있다면 유지 ========
 async function autoResolveCurrentSlot() {
   if (!isWithinEvent()) return;
 
   const slotId = getEventSlotId(new Date());
   const exists = await MoonSlot.findOne({ slotId });
-  if (exists) return; // 이미 확정됨
+  if (exists) return;
 
-  // 확률 분포에 따라 multiplier
   const r = Math.random() * 100;
   let mul = 0;
   if (r < 30) mul = 0;
@@ -158,7 +167,6 @@ async function autoResolveCurrentSlot() {
 
   const slot = await MoonSlot.create({ slotId, multiplier: mul });
 
-  // 베팅 정산 + payout 저장
   const bets = await MoonBet.find({ slotId });
   for (const b of bets) {
     const u = await User.findOne({ seq: b.userSeq });
@@ -173,7 +181,6 @@ async function autoResolveCurrentSlot() {
   console.log(`[AutoResolve] ${slotId} → x${mul}, bets=${bets.length}`);
 }
 
-// 초당 체크하여 (…:00, …:10, …:20, …)에만 실행
 setInterval(() => {
   const now = new Date();
   if (now.getSeconds() === 0 && now.getMinutes() % 10 === 0) {

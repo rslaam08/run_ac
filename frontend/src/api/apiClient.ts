@@ -20,6 +20,16 @@ export const authApi = axios.create({
   baseURL: `${base}/auth`,
   withCredentials: false,
 });
+export const eventApi = {
+  status:    () => api.get('/event/status'),
+  bet:       (amount: number) => api.post('/event/bet', { amount }),
+  resolve:   () => api.post('/event/resolve'),
+  logs:      (slotId: string) => api.get(`/event/logs/${slotId}`),
+  market:    () => api.get('/event/market'),
+  buy:       (itemId: string) => api.post('/event/market/buy', { itemId }),
+  purchases: () => api.get('/event/market/purchases'), // admin only
+};
+
 
 // ===== 토큰 보관/주입 헬퍼 =====
 const TOKEN_KEY = 'runac_jwt';
@@ -43,6 +53,7 @@ export function clearAuthToken() {
   delete api.defaults.headers.common.Authorization;
   delete authApi.defaults.headers.common.Authorization;
 }
+
 
 // 요청 인터셉터: Authorization 자동 첨부 + 로깅
 api.interceptors.request.use((cfg) => {

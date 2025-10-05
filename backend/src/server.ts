@@ -13,6 +13,7 @@ import authRouter from './routes/auth';
 import userRouter from './routes/user';
 import recordRouter from './routes/record';
 import './passportConfig';
+import eventRouter from './routes/event';
 
 const app = express();
 
@@ -96,7 +97,7 @@ app.get('/', (_req, res) => {
 app.use((req, res) => {
   res.status(404).json({ message: `Cannot ${req.method} ${req.originalUrl}` });
 });
-
+app.use('/api/event', eventRouter);
 // 전역 에러 핸들러
 app.use((
   err: any,

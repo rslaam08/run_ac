@@ -9,6 +9,7 @@ import RankingPage from './pages/RankingPage';
 import RunbilityCalculator from './pages/RunbilityCalculator';
 import AuthCallback from './pages/AuthCallback'; // 해시에서 토큰 파싱하는 콜백 페이지
 import './styles/global.css';
+import EventPage from './pages/EventPage';
 
 function App() {
   return (
@@ -21,6 +22,7 @@ function App() {
           <Route path="/ranking" element={<RankingPage />} />
           <Route path="/calc" element={<RunbilityCalculator />} />
           <Route path="/auth/callback" element={<AuthCallback />} />
+          <Route path="/event" element={<EventPage />} />
         </Route>
       </Routes>
     </HashRouter>

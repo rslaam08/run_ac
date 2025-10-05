@@ -88,6 +88,7 @@ const Header: React.FC = () => {
               마이 페이지
             </button>
             <Link to="/calc" className="nav-btn">runbility 계산기</Link>
+            <Link to="/event" className="nav-btn">추석 이벤트🌕</Link>
           </div>
 
           <form className="user-search" onSubmit={handleSearch}>

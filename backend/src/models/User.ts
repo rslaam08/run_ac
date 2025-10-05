@@ -8,6 +8,8 @@ interface IUser extends Document {
   intro:    string;
   seq:      number;
   isAdmin:  boolean;
+  moonPoints: Number;
+  moonPurchases: [String];
 }
 
 const UserSchema = new Schema<IUser>({
@@ -15,7 +17,9 @@ const UserSchema = new Schema<IUser>({
   name:     { type: String, required: true },
   intro:    { type: String, default: '' },
   seq:      { type: Number, required: true, unique: true },
-  isAdmin:  { type: Boolean, default: false }
+  isAdmin:  { type: Boolean, default: false },
+  moonPoints: { type: Number, default: 0 },
+  moonPurchases: { type: [String], default: [] } // 구매한 itemId들
 });
 
 // 중복 인덱스 생성을 막기 위해 아래 두 줄을 제거했습니다.

@@ -1,0 +1,19 @@
+.event-page { max-width: 900px; margin: 1.5rem auto; padding: 0 1rem; }
+.event-tabs { display:flex; gap:.5rem; margin-bottom:1rem; flex-wrap: wrap; }
+.event-tabs button { padding:.5rem .75rem; border:1px solid #e5e7eb; border-radius:.5rem; background:#fff; }
+.event-tabs button.active { background:#111827; color:#fff; border-color:#111827; }
+
+.event-balance { margin:.5rem 0 1rem; font-weight:bold; }
+
+.bet-box { display:flex; gap:.5rem; align-items:center; margin:.75rem 0; }
+.bet-box input { width:130px; padding:.4rem .5rem; border:1px solid #ddd; border-radius:.375rem; }
+.bet-box button { padding:.4rem .75rem; border-radius:.375rem; border:1px solid #e5e7eb; background:#fff; }
+
+.logs { margin-top:1rem; background:#fff; border:1px solid #eee; border-radius:.5rem; padding: .75rem; }
+
+.market-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(180px,1fr)); gap: .75rem; }
+.market-card { border:1px solid #eee; border-radius:.5rem; padding:.75rem; background:#fff; }
+.img-holder { height:120px; background:#f3f4f6; border-radius:.375rem; display:flex; align-items:center; justify-content:center; color:#9ca3af;}
+.name { font-weight:600; margin:.5rem 0; }
+.price { color:#374151; margin-bottom:.5rem; }
+.market-card button[disabled] { opacity:.6; cursor:not-allowed; }

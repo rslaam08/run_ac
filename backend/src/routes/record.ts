@@ -6,6 +6,8 @@ import multer from 'multer';
 import { Types } from 'mongoose';
 import Record from '../models/Record';
 import { ensureJwt } from '../middleware/jwt';
+import { isWithinEvent, getRunbility, mergeMoon } from '../utils/moon';
+import User from '../models/User';
 
 const router = express.Router();
 
@@ -171,6 +173,14 @@ router.put('/:id/approve', ensureJwt, async (req, res) => {
   if (!Types.ObjectId.isValid(id)) return res.status(400).json({ error: '잘못된 id' });
 
   const updated = await Record.findByIdAndUpdate(id, { status: 'approved' }, { new: true });
+  if (updated && isWithinEvent(new Date())) {
+  const rb = getRunbility(updated.timeSec, updated.distance);
+  const u = await User.findOne({ seq: updated.userSeq });
+  if (u) {
+    u.moonPoints = mergeMoon(u.moonPoints || 0, rb);
+    await u.save();
+  }
+}
   res.json(updated);
 });
 

@@ -31,7 +31,7 @@ const PUBLIC_API_URL = (process.env.PUBLIC_API_URL || `http://localhost:${PORT}`
 const UPLOAD_DIR = process.env.UPLOAD_DIR || path.join(__dirname, '../uploads');
 
 app.set('trust proxy', 1);
-
+app.use('/api/event', eventRouter);
 app.use(cors({
   origin(origin, cb) {
     if (!origin) return cb(null, true);
@@ -97,7 +97,6 @@ app.get('/', (_req, res) => {
 app.use((req, res) => {
   res.status(404).json({ message: `Cannot ${req.method} ${req.originalUrl}` });
 });
-app.use('/api/event', eventRouter);
 // 전역 에러 핸들러
 app.use((
   err: any,

@@ -1,10 +1,9 @@
-// backend/src/server.ts
 import 'dotenv/config';
 import express from 'express';
 import mongoose from 'mongoose';
 import passport from 'passport';
 import session from 'express-session';
-import cors, { CorsOptions } from 'cors';
+import cors, { CorsOptionsDelegate } from 'cors';
 import path from 'path';
 import multer from 'multer';
 import MongoStore from 'connect-mongo';
@@ -14,24 +13,22 @@ import userRouter from './routes/user';
 import recordRouter from './routes/record';
 import eventRouter from './routes/event';
 import './passportConfig';
-// 자동 결과 확정용
+
+// 🚨 자동 정산에 필요한 것들
 import MoonSlot from './models/MoonSlot';
 import MoonBet from './models/MoonBet';
 import User from './models/User';
 import { getEventSlotId, isWithinEvent } from './utils/moon';
-
 
 const app = express();
 
 const isProd = process.env.NODE_ENV === 'production';
 const PORT = Number(process.env.PORT || 4000);
 
-// ✅ 허용 Origin 목록 구성
+// 허용 Origin
 const DEFAULT_ORIGINS = ['http://localhost:3000', 'https://rslaam08.github.io'];
 const CLIENT_URLS = (process.env.CLIENT_URLS || process.env.CLIENT_URL || '')
-  .split(',')
-  .map(s => s.trim())
-  .filter(Boolean);
+  .split(',').map(s => s.trim()).filter(Boolean);
 const ALLOWED_ORIGINS = CLIENT_URLS.length ? CLIENT_URLS : DEFAULT_ORIGINS;
 
 const PUBLIC_API_URL = (process.env.PUBLIC_API_URL || `http://localhost:${PORT}`).replace(/\/$/, '');
@@ -43,42 +40,37 @@ if (!MONGO) {
   process.exit(1);
 }
 
-// ✅ 프록시 뒤에서 secure 쿠키를 쓰려면 필수
 app.set('trust proxy', 1);
 
-// ============================= CORS & 기본 미들웨어 순서 =============================
-// ✅ CORS: *반드시* 라우터보다 먼저
-const corsOptions: CorsOptions = {
-  // 절대 에러를 던지지 말 것! (cb(new Error(...)) 금지)
-  origin(origin, cb) {
-    // same-origin 요청(Origin 헤더 없음)은 허용
-    if (!origin) return cb(null, true);
+// CORS (라우터보다 먼저)
+const corsOptions: CorsOptionsDelegate = (req, cb) => {
+  const origin = req.headers['origin'] as string | undefined;
+  if (!origin) return cb(null, { origin: true, credentials: true });
 
-    const norm = origin.replace(/\/$/, '');
-    const okSet = new Set(ALLOWED_ORIGINS.map(o => o.replace(/\/$/, '')));
-
-    // 허용: true / 비허용: false 로 “조용히” 넘김
-    cb(null, okSet.has(norm));
-  },
-  credentials: true, // axios withCredentials 대응
-  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'], // 'authorization' 소문자로 와도 OK(대소문자 무시)
-  exposedHeaders: ['Content-Type'],
-  maxAge: 86400,
-  optionsSuccessStatus: 204, // 프리플라이트 상태코드 고정
+  const norm = origin.replace(/\/$/, '');
+  const ok = new Set([...ALLOWED_ORIGINS.map(o => o.replace(/\/$/, ''))]);
+  if (ok.has(norm)) {
+    cb(null, {
+      origin: true,
+      credentials: true,
+      methods: ['GET','POST','PUT','PATCH','DELETE','OPTIONS'],
+      allowedHeaders: ['Content-Type','Authorization'],
+      exposedHeaders: ['Content-Type'],
+      maxAge: 86400,
+    });
+  } else {
+    cb(new Error(`CORS blocked for origin: ${origin}`));
+  }
 };
-
 app.use(cors(corsOptions));
-// ❌ (원인) app.options('*', ...)  →  Express 5에서 별표 경로가 invalid
-// ✅ 아예 필요 없음. cors 미들웨어가 프리플라이트 응답(204)을 자동 처리함.
+app.options('*', cors(corsOptions));
 
-// JSON 파서 (CORS 뒤, 라우터 앞)
+// 캐시 비활성(ETag 끔)
+app.set('etag', false);
+
 app.use(express.json());
-
-// 정적 업로드 경로
 app.use('/uploads', express.static(UPLOAD_DIR));
 
-// ============================= 세션 & 패스포트 =============================
 app.use(session({
   name: 'smsession',
   secret: process.env.SESSION_SECRET!,
@@ -97,18 +89,15 @@ app.use(session({
 app.use(passport.initialize());
 app.use(passport.session());
 
-// ============================= DB 연결 =============================
 mongoose.connect(MONGO)
   .then(() => console.log('✅ MongoDB connected'))
   .catch(err => console.error('❌ MongoDB connection error:', err));
 
-// ============================= 라우터 등록 =============================
 app.use('/auth',        authRouter);
 app.use('/api/user',    userRouter);
 app.use('/api/records', recordRouter);
 app.use('/api/event',   eventRouter);
 
-// 헬스체크
 app.get('/', (_req, res) => {
   res.json({
     status: 'ok',
@@ -119,11 +108,12 @@ app.get('/', (_req, res) => {
   });
 });
 
-// ============================= 404 & 에러 핸들러 =============================
+// 404
 app.use((req, res) => {
   res.status(404).json({ message: `Cannot ${req.method} ${req.originalUrl}` });
 });
 
+// 전역 에러 핸들러
 app.use((
   err: any,
   _req: express.Request,
@@ -140,12 +130,12 @@ app.use((
   res.status(500).json({ error: '서버 오류가 발생했습니다.' });
 });
 
-// ============================= START =============================
 app.listen(PORT, () => {
   console.log(`🚀 Server running on ${PUBLIC_API_URL}`);
 });
 
-// === 🕓 매 10분 정각마다 자동 결과 확정 ===
+
+// ============= 🕓 자동 정산 스케줄러 (매 10분 정각) =============
 async function autoResolveCurrentSlot() {
   if (!isWithinEvent()) return;
 
@@ -153,7 +143,7 @@ async function autoResolveCurrentSlot() {
   const exists = await MoonSlot.findOne({ slotId });
   if (exists) return; // 이미 확정됨
 
-  // 확률 분포에 따라 multiplier 결정
+  // 확률 분포에 따라 multiplier
   const r = Math.random() * 100;
   let mul = 0;
   if (r < 30) mul = 0;
@@ -161,15 +151,15 @@ async function autoResolveCurrentSlot() {
   else if (r < 75) mul = 1;
   else if (r < 90) mul = 1.5;
   else {
-    const r2 = (r - 90) * 10; // 0~100
+    const r2 = (r - 90) * 10;
     if (r2 < 60) mul = 2;
     else if (r2 < 96) mul = 4;
     else mul = 8;
   }
 
   const slot = await MoonSlot.create({ slotId, multiplier: mul });
-  console.log(`[AutoResolve] ${slotId} → x${mul}`);
 
+  // 베팅 정산 + payout 저장
   const bets = await MoonBet.find({ slotId });
   for (const b of bets) {
     const u = await User.findOne({ seq: b.userSeq });
@@ -180,12 +170,14 @@ async function autoResolveCurrentSlot() {
     b.set('payout', reward);
     await b.save();
   }
+
+  console.log(`[AutoResolve] ${slotId} → x${mul}, bets=${bets.length}`);
 }
 
-// 초당 체크하여 00초에만 실행 (…:00, …:10, …:20, …)
+// 초당 체크하여 (…:00, …:10, …:20, …)에만 실행
 setInterval(() => {
   const now = new Date();
-  if (now.getMinutes() % 10 === 0 && now.getSeconds() === 0) {
+  if (now.getSeconds() === 0 && now.getMinutes() % 10 === 0) {
     autoResolveCurrentSlot().catch(e => console.error('Auto resolve error', e));
   }
 }, 1000);

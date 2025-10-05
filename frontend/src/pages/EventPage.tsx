@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { eventApi } from '../api/apiClient';
 import './EventPage.css';
 
@@ -18,11 +18,17 @@ type MarketItem = {
   bought?: boolean;
 };
 
+type LatestLog = {
+  slotId: string;
+  multiplier: number;
+  participants: { userSeq: number; userName: string; amount: number; payout: number }[];
+} | null;
+
 const EventPage: React.FC = () => {
   const [tab, setTab] = useState<'desc' | 'casino' | 'market'>('desc');
   const [status, setStatus] = useState<Status | null>(null);
   const [amount, setAmount] = useState('');
-  const [logs, setLogs] = useState<any>(null);
+  const [latest, setLatest] = useState<LatestLog>(null);
   const [items, setItems] = useState<MarketItem[]>([]);
   const [purchases, setPurchases] = useState<any[]>([]);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -48,29 +54,20 @@ const EventPage: React.FC = () => {
     }
   };
 
-  const loadLogs = async () => {
-    if (!status?.nowSlotId) return;
+  const loadLatest = async () => {
     try {
-      const r = await eventApi.logs(status.nowSlotId);
-      setLogs(r.data);
+      const r = await eventApi.latest();
+      setLatest(r.data?.latest ?? null);
     } catch {
-      setLogs(null);
-    }
-  };
-
-  const loadAdminPurchases = async () => {
-    if (!isAdmin) return;
-    try {
-      const r = await eventApi.purchases();
-      setPurchases(r.data);
-    } catch {
-      setPurchases([]);
+      setLatest(null);
     }
   };
 
   useEffect(() => {
     loadStatus();
     loadMarket();
+    loadLatest();
+    // JWT payload에서 seq==1 확인
     try {
       const t = localStorage.getItem('runac_jwt');
       if (t) {
@@ -81,9 +78,33 @@ const EventPage: React.FC = () => {
     } catch {}
   }, []);
 
+  // 다음 10분 경계(…:00, …:10, …:20, …) 계산
+  const nextBoundaryMs = useMemo(() => {
+    const now = new Date();
+    const next = new Date(now);
+    const m = now.getMinutes();
+    const next10 = Math.ceil((m + (now.getSeconds() > 0 ? 1 : 0)) / 10) * 10;
+    next.setMinutes(next10 % 60, 0, 0);
+    if (next10 >= 60) next.setHours(now.getHours() + 1);
+    return next.getTime() - now.getTime();
+  }, [status?.nowSlotId]); // 대략 슬롯 바뀔 때 재계산
+
+  // 슬롯 종료 시점에 한 번 새로고침 → 이후 10분 주기 새로고침
   useEffect(() => {
-    loadLogs();
-  }, [status?.nowSlotId]);
+    // 첫 경계까지 한 번
+    const t1 = window.setTimeout(async () => {
+      await loadStatus();
+      await loadLatest();
+      // 이후 10분마다
+      const t2 = window.setInterval(async () => {
+        await loadStatus();
+        await loadLatest();
+      }, 10 * 60 * 1000);
+      // cleanup
+      return () => clearInterval(t2);
+    }, Math.max(1000, nextBoundaryMs)); // 최소 1초
+    return () => clearTimeout(t1);
+  }, [nextBoundaryMs]);
 
   return (
     <div className="event-page">
@@ -99,14 +120,16 @@ const EventPage: React.FC = () => {
         </button>
       </div>
 
-      <div className="event-balance">보름달 코인 🌕: {Math.floor(status?.moon ?? 0).toLocaleString()}</div>
+      <div className="event-balance">
+        보름달 코인 🌕: {Math.floor(status?.moon ?? 0).toLocaleString()}
+      </div>
 
       {tab === 'desc' && (
         <section className="event-section">
           <h2>페이지 설명</h2>
           <p>이곳에 설명을 입력하세요</p>
           <p>이벤트 기간: 2025-10-06 ~ 2025-10-12 (KST)</p>
-          <p>도박장 오픈: 매일 21:00~23:59 / 각 10분 슬롯 (:01~:09 베팅, :10 결과)</p>
+          <p>도박장: 매 10분 슬롯, 각 슬롯 종료 시 결과 공개</p>
         </section>
       )}
 
@@ -116,6 +139,7 @@ const EventPage: React.FC = () => {
           <p>
             현재 슬롯: {status?.nowSlotId} ({status?.isBettingWindow ? '베팅 가능' : '대기'})
           </p>
+
           <div className="bet-box">
             <input
               type="number"
@@ -134,7 +158,6 @@ const EventPage: React.FC = () => {
                   alert('베팅 완료!');
                   setAmount('');
                   await loadStatus();
-                  await loadLogs();
                 } catch (e: any) {
                   alert(e?.response?.data?.error || '베팅 실패');
                 }
@@ -145,19 +168,21 @@ const EventPage: React.FC = () => {
           </div>
 
           <div className="logs">
-            <h3>참여 로그 & 결과</h3>
-            {!logs && <div>로딩…</div>}
-            {logs && (
-              <>
-                <div>결과: x{logs.slot?.multiplier ?? '(미확정)'}</div>
+            <h3>최근 슬롯 결과</h3>
+            {!latest && <div>아직 확정된 슬롯이 없습니다.</div>}
+            {latest && (
+              <div className="slot-log">
+                <h4>
+                  {latest.slotId} — 결과 x{latest.multiplier}
+                </h4>
                 <ul>
-                  {logs.bets?.map((b: any) => (
-                    <li key={b._id}>
-                      user #{b.userSeq} — {b.amount.toLocaleString()}🌕
+                  {latest.participants.map((p, idx) => (
+                    <li key={`${latest.slotId}-${p.userSeq}-${idx}`}>
+                      [슬롯 {latest.slotId}] {p.userName} — {p.amount.toLocaleString()}🌕 → {p.payout.toLocaleString()}🌕 (x{latest.multiplier})
                     </li>
                   ))}
                 </ul>
-              </>
+              </div>
             )}
           </div>
         </section>
@@ -200,22 +225,6 @@ const EventPage: React.FC = () => {
               </div>
             ))}
           </div>
-
-          {isAdmin && (
-            <>
-              <h3>구매 내역 (admin)</h3>
-              <button type="button" onClick={loadAdminPurchases}>
-                새로고침
-              </button>
-              <ul>
-                {purchases.map((p: any) => (
-                  <li key={p._id}>
-                    user #{p.userSeq} — {p.itemId} — {p.price.toLocaleString()}🌕
-                  </li>
-                ))}
-              </ul>
-            </>
-          )}
         </section>
       )}
     </div>

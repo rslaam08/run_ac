@@ -1,3 +1,4 @@
+// backend/src/routes/event.ts
 import express from 'express';
 import User from '../models/User';
 import MoonBet from '../models/MoonBet';
@@ -18,10 +19,8 @@ const ITEMS = [
   { id: 'bbq',      name: 'BBQ황금올리브+콜라1.25L',  price: 173205, img: '' },
 ];
 
-/** JWT 페이로드 얻기 (ensureJwt 가 어떤 필드에 넣든 대응) */
-function getJwtUser(
-  req: express.Request
-): { seq: number; name?: string; isAdmin?: boolean } | null {
+/** JWT 유저 추출 */
+function getJwtUser(req: express.Request): { seq: number; name?: string; isAdmin?: boolean } | null {
   const a = (req as any).jwtUser;
   const b = (req as any).auth;
   return (a && typeof a.seq === 'number')
@@ -66,11 +65,9 @@ router.post('/bet', ensureJwt, async (req, res) => {
   const current = Number(user.moonPoints || 0);
   if (current < amount) return res.status(400).json({ error: '보름달코인이 부족합니다.' });
 
-  // 같은 슬롯 중복 베팅 방지
   const already = await MoonBet.findOne({ slotId, userSeq: me.seq });
   if (already) return res.status(400).json({ error: '해당 슬롯에 이미 베팅했습니다.' });
 
-  // 차감 후 저장
   user.moonPoints = current - amount;
   await user.save();
 
@@ -78,45 +75,46 @@ router.post('/bet', ensureJwt, async (req, res) => {
   return res.json({ ok: true, slotId, remain: Number(user.moonPoints || 0) });
 });
 
-/** 3) 결과 산출/확정 (결과시각에 최초 호출하는 누구나 트리거 가능) */
+/** 3) 결과 산출/확정 및 정산 */
 router.post('/resolve', async (_req, res) => {
   if (!isWithinEvent()) return res.status(400).json({ error: '이벤트 기간이 아닙니다.' });
 
   const slotId = getEventSlotId(new Date());
-  const exists = await MoonSlot.findOne({ slotId });
-  if (exists) return res.json(exists); // 이미 확정됨
+  let slot = await MoonSlot.findOne({ slotId });
 
-  // 확률 분포에 따라 multiplier 결정
-  // (근사: 30% 0 / 25% 0.5 / 20% 1 / 15% 1.5 / 10% 2 / 3.6% 4 / 0.4% 8)
-  const r = Math.random() * 100;
-  let mul = 0;
-  if (r < 30) mul = 0;
-  else if (r < 55) mul = 0.5;
-  else if (r < 75) mul = 1;
-  else if (r < 90) mul = 1.5;
-  else {
-    const r2 = (r - 90) * 10; // 0~100
-    if (r2 < 60) mul = 2;
-    else if (r2 < 96) mul = 4;
-    else mul = 8;
+  if (!slot) {
+    const r = Math.random() * 100;
+    let mul = 0;
+    if (r < 30) mul = 0;
+    else if (r < 55) mul = 0.5;
+    else if (r < 75) mul = 1;
+    else if (r < 90) mul = 1.5;
+    else {
+      const r2 = (r - 90) * 10;
+      if (r2 < 60) mul = 2;
+      else if (r2 < 96) mul = 4;
+      else mul = 8;
+    }
+    slot = await MoonSlot.create({ slotId, multiplier: mul });
   }
 
-  // 결과 저장
-  const slot = await MoonSlot.create({ slotId, multiplier: mul });
-
-  // 모든 베팅 정산
   const bets = await MoonBet.find({ slotId });
-  for (const b of bets) {
-    const u = await User.findOne({ seq: b.userSeq });
-    if (!u) continue;
-    u.moonPoints = Number(u.moonPoints || 0) + Number(b.amount) * mul;
-    await u.save();
-  }
+  await Promise.all(
+    bets.map(async (b) => {
+      const u = await User.findOne({ seq: b.userSeq });
+      if (!u) return;
+      const reward = Number(b.amount) * Number(slot?.multiplier || 0);
+      u.moonPoints = Number(u.moonPoints || 0) + reward;
+      await u.save();
+      b.set('payout', reward);
+      await b.save();
+    })
+  );
 
   return res.json(slot);
 });
 
-/** 4) 해당 슬롯 로그 */
+/** 4) 단일 슬롯 로그 */
 router.get('/logs/:slotId', async (req, res) => {
   const slotId = req.params.slotId;
   const slot = await MoonSlot.findOne({ slotId }).lean();
@@ -124,10 +122,43 @@ router.get('/logs/:slotId', async (req, res) => {
   return res.json({ slot, bets });
 });
 
-/** 5) 마켓 목록 — 🔓비로그인 허용 (구매만 로그인 필요) */
+/** ✅ 4-2) 전체 로그 (참여자 있었던 모든 슬롯) */
+router.get('/logs/all', async (_req, res) => {
+  // MoonSlot은 그대로
+  const slots = await MoonSlot.find().sort({ slotId: -1 }).lean();
+
+  // MoonBet의 lean 제네릭 타입 명시 (배열)
+  const logs: {
+    slotId: string;
+    multiplier: number;
+    participants: { userSeq: number; amount: number; payout: number }[];
+  }[] = [];
+
+  for (const s of slots) {
+    const bets = await MoonBet.find({ slotId: s.slotId }).lean<{
+      userSeq: number;
+      amount: number;
+      payout?: number;
+    }[]>();
+
+    if (!bets.length) continue; // 이제 length / map 모두 정상
+
+    logs.push({
+      slotId: s.slotId,
+      multiplier: s.multiplier,
+      participants: bets.map((b) => ({
+        userSeq: b.userSeq,
+        amount: b.amount,
+        payout: b.payout ?? b.amount * s.multiplier,
+      })),
+    });
+  }
+
+  return res.json({ ok: true, logs });
+});
+/** 5) 마켓 목록 (비로그인 허용) */
 router.get('/market', async (req, res) => {
   try {
-    // 로그인 상태면 구매 여부 표시
     let bought = new Set<string>();
     const me = getJwtUser(req);
     if (me?.seq != null) {
@@ -165,7 +196,7 @@ router.post('/market/buy', ensureJwt, async (req, res) => {
     return res.status(400).json({ error: '보름달코인이 부족합니다.' });
 
   user.moonPoints = Number(user.moonPoints || 0) - item.price;
-  user.moonPurchases = [ ...(user.moonPurchases || []), itemId ];
+  user.moonPurchases = [...(user.moonPurchases || []), itemId];
   await user.save();
 
   await MoonPurchase.create({ userSeq: me.seq, itemId, price: item.price });

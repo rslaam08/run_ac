@@ -112,7 +112,7 @@ const EventPage: React.FC = () => {
 
       {tab==='casino' && (
         <section className="event-section">
-          <h2>보름달 도박장(즉시 결과)</h2>
+          <h2>보름달 도박장</h2>
           <p>각 베팅은 즉시 결과가 결정되어 정산됩니다.</p>
 
           <div className="bet-box">

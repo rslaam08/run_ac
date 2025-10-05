@@ -19,12 +19,16 @@ const ITEMS = [
 ];
 
 /** JWT 페이로드 얻기 (ensureJwt 가 어떤 필드에 넣든 대응) */
-function getJwtUser(req: express.Request): { seq: number; name?: string; isAdmin?: boolean } | null {
+function getJwtUser(
+  req: express.Request
+): { seq: number; name?: string; isAdmin?: boolean } | null {
   const a = (req as any).jwtUser;
   const b = (req as any).auth;
-  return (a && typeof a.seq === 'number') ? a
-       : (b && typeof b.seq === 'number') ? b
-       : null;
+  return (a && typeof a.seq === 'number')
+    ? a
+    : (b && typeof b.seq === 'number')
+    ? b
+    : null;
 }
 
 /** 1) 내 상태 */
@@ -83,16 +87,15 @@ router.post('/resolve', async (_req, res) => {
   if (exists) return res.json(exists); // 이미 확정됨
 
   // 확률 분포에 따라 multiplier 결정
-  // (원 요청 분포와 근사치: 30% 0 / 25% 0.5 / 20% 1 / 15% 1.5 / 10% 2 / 4% 4 / 1% 8)
+  // (근사: 30% 0 / 25% 0.5 / 20% 1 / 15% 1.5 / 10% 2 / 3.6% 4 / 0.4% 8)
   const r = Math.random() * 100;
   let mul = 0;
   if (r < 30) mul = 0;
   else if (r < 55) mul = 0.5;
   else if (r < 75) mul = 1;
   else if (r < 90) mul = 1.5;
-  else if (r < 100) {
-    // 남은 10%를 2 / 4 / 8 근사 분배(6% / 3.6% / 0.4%)
-    const r2 = (r - 90) / 10 * 100; // 0~100
+  else {
+    const r2 = (r - 90) * 10; // 0~100
     if (r2 < 60) mul = 2;
     else if (r2 < 96) mul = 4;
     else mul = 8;
@@ -121,16 +124,24 @@ router.get('/logs/:slotId', async (req, res) => {
   return res.json({ slot, bets });
 });
 
-/** 5) 마켓 목록 */
-router.get('/market', ensureJwt, async (req, res) => {
-  const me = getJwtUser(req);
-  if (!me) return res.status(401).json({ error: 'Unauthorized' });
+/** 5) 마켓 목록 — 🔓비로그인 허용 (구매만 로그인 필요) */
+router.get('/market', async (req, res) => {
+  try {
+    // 로그인 상태면 구매 여부 표시
+    let bought = new Set<string>();
+    const me = getJwtUser(req);
+    if (me?.seq != null) {
+      const u = await User.findOne({ seq: me.seq }).lean();
+      bought = new Set((u?.moonPurchases as string[]) || []);
+    }
 
-  const u = await User.findOne({ seq: me.seq }).lean();
-  const bought = new Set(u?.moonPurchases || []);
-  res.json({
-    items: ITEMS.map(it => ({ ...it, bought: bought.has(it.id) }))
-  });
+    return res.json({
+      items: ITEMS.map(it => ({ ...it, bought: bought.has(it.id) })),
+    });
+  } catch (e) {
+    console.error('GET /event/market error', e);
+    return res.status(500).json({ error: 'Server error' });
+  }
 });
 
 /** 6) 구매 */

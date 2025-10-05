@@ -22,27 +22,48 @@ const EventPage: React.FC = () => {
   const [items, setItems] = useState<MarketItem[]>([]);
   const [purchases, setPurchases] = useState<any[]>([]);
   const [isAdmin, setIsAdmin] = useState(false); // 필요시 토큰 payload에서 seq==1 감지
+  const [marketError, setMarketError] = useState<string | null>(null);
 
   const loadStatus = async () => {
-    const r = await eventApi.status();
-    setStatus(r.data);
+    try {
+      const r = await eventApi.status();
+      setStatus(r.data);
+    } catch (e:any) {
+      // 비로그인 시 status는 401 (정상)
+      setStatus(null);
+    }
   };
 
   const loadMarket = async () => {
-    const r = await eventApi.market();
-    setItems(r.data.items);
+    try {
+      setMarketError(null);
+      const r = await eventApi.market();
+      setItems(r.data?.items ?? []);
+    } catch (e:any) {
+      console.warn('market load fail', e?.response?.status, e?.response?.data);
+      setItems([]);
+      setMarketError(e?.response?.data?.error || '마켓 불러오기 실패');
+    }
   };
 
   const loadLogs = async () => {
-    if (!status) return;
-    const r = await eventApi.logs(status.nowSlotId);
-    setLogs(r.data);
+    if (!status?.nowSlotId) return;
+    try {
+      const r = await eventApi.logs(status.nowSlotId);
+      setLogs(r.data);
+    } catch {
+      setLogs(null);
+    }
   };
 
   const loadAdminPurchases = async () => {
     if (!isAdmin) return;
-    const r = await eventApi.purchases();
-    setPurchases(r.data);
+    try {
+      const r = await eventApi.purchases();
+      setPurchases(r.data);
+    } catch {
+      setPurchases([]);
+    }
   };
 
   useEffect(() => {
@@ -144,6 +165,19 @@ const EventPage: React.FC = () => {
       {tab==='market' && (
         <section className="event-section">
           <h2>보름달 마켓</h2>
+
+          {marketError && (
+            <div className="text-red-600 text-sm mb-2">
+              {marketError}
+            </div>
+          )}
+
+          {(!items || items.length === 0) && !marketError && (
+            <div className="text-gray-500 text-sm mb-2">
+              표시할 상품이 없습니다. (로그인 상태 또는 서버 응답을 확인하세요)
+            </div>
+          )}
+
           <div className="market-grid">
             {items.map(it=>(
               <div key={it.id} className="market-card">
@@ -154,7 +188,7 @@ const EventPage: React.FC = () => {
                   disabled={!!it.bought}
                   onClick={async ()=>{
                     try {
-                      const r = await eventApi.buy(it.id);
+                      await eventApi.buy(it.id);
                       alert('구매 완료!');
                       await loadStatus();
                       await loadMarket();

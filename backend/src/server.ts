@@ -63,7 +63,6 @@ const corsOptions: CorsOptionsDelegate = (req, cb) => {
   }
 };
 app.use(cors(corsOptions));
-app.options('*', cors(corsOptions));
 
 // 캐시 비활성(ETag 끔)
 app.set('etag', false);

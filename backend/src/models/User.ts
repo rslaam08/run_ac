@@ -1,29 +1,32 @@
-// backend/src/models/User.ts
+import { Schema, model, HydratedDocument } from 'mongoose';
 
-import { Schema, model, Document } from 'mongoose';
-
-interface IUser extends Document {
+export interface IUser {
   googleId: string;
   name:     string;
   intro:    string;
   seq:      number;
   isAdmin:  boolean;
-  moonPoints: Number;
-  moonPurchases: [String];
+
+  // ✨ TS에서는 원시 타입 + 배열 표기
+  moonPoints: number;
+  moonPurchases: string[]; // 구매한 itemId들
 }
 
-const UserSchema = new Schema<IUser>({
-  googleId: { type: String, required: true, unique: true },
-  name:     { type: String, required: true },
-  intro:    { type: String, default: '' },
-  seq:      { type: Number, required: true, unique: true },
-  isAdmin:  { type: Boolean, default: false },
-  moonPoints: { type: Number, default: 0 },
-  moonPurchases: { type: [String], default: [] } // 구매한 itemId들
-});
+// 몽구스 스키마는 기존처럼 [String] 사용 가능 (저장은 DB 레벨)
+const UserSchema = new Schema<IUser>(
+  {
+    googleId:     { type: String, required: true, unique: true },
+    name:         { type: String, required: true },
+    intro:        { type: String, default: '' },
+    seq:          { type: Number, required: true, unique: true },
+    isAdmin:      { type: Boolean, default: false },
+    moonPoints:   { type: Number, default: 0 },
+    moonPurchases:{ type: [String], default: [] },
+  },
+  { timestamps: true }
+);
 
-// 중복 인덱스 생성을 막기 위해 아래 두 줄을 제거했습니다.
-// UserSchema.index({ googleId: 1 }, { unique: true });
-// UserSchema.index({ seq:      1 }, { unique: true });
+// 몽구스 v6+ 권장 타입
+export type UserDocument = HydratedDocument<IUser>;
 
-export default model<IUser>('User', UserSchema);
+export default model<UserDocument>('User', UserSchema);

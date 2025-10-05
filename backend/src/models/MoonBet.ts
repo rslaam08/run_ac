@@ -1,16 +1,21 @@
-// backend/src/models/MoonBet.ts
 import mongoose from 'mongoose';
 
-const MoonBetSchema = new mongoose.Schema({
-  slotId: { type: String, required: true }, // 기존에 있으면 유지 (혹은 per-bet slotId 사용)
-  userSeq: { type: Number, required: true },
-  amount: { type: Number, required: true },
-  // 추가 필드들:
-  multiplier: { type: Number, default: 0 },    // 결정된 배수 (즉시 결정)
-  payout: { type: Number, default: 0 },        // 지급액(amount * multiplier)
-  resolvedAt: { type: Date, default: null },   // 결과가 결정된 시각
-}, {
-  timestamps: true
-});
+const MoonBetSchema = new mongoose.Schema(
+  {
+    // 즉시결과 방식에서도 slotId는 기록 보존/참조를 위해 유지합니다.
+    slotId: { type: String, required: true, index: true },
+
+    userSeq: { type: Number, required: true, index: true },
+    amount:  { type: Number, required: true },
+
+    // 즉시 결과 필드
+    multiplier: { type: Number, default: 0 },
+    payout:     { type: Number, default: 0 },
+    resolvedAt: { type: Date,   default: null },
+  },
+  {
+    timestamps: true,
+  }
+);
 
 export default mongoose.model('MoonBet', MoonBetSchema);

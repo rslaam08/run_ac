@@ -13,6 +13,7 @@ import userRouter from './routes/user';
 import recordRouter from './routes/record';
 import eventRouter from './routes/event';
 import './passportConfig';
+import axios from 'axios';
 
 const app = express();
 const isProd = process.env.NODE_ENV === 'production';
@@ -148,3 +149,27 @@ app.use((
 app.listen(PORT, () => {
   console.log(`🚀 Server running on ${PUBLIC_API_URL}`);
 });
+
+const AUTO_RESOLVE = 'on'; // 'on'이면 항상, 'time'이면 21~24시만
+
+setInterval(async () => {
+  if (AUTO_RESOLVE !== 'on' && AUTO_RESOLVE !== 'time') return;
+
+  const now = new Date();
+  const h = now.getHours();
+  const m = now.getMinutes();
+  const s = now.getSeconds();
+
+  // 🟡 조건 1: 시간대 제한 (21~23시, 또는 테스트 중이면 항상)
+  if (AUTO_RESOLVE?.toLowerCase?.() === 'time' && (h < 21 || h >= 24)) return;
+
+  // 🟢 조건 2: 10분 단위의 첫 10초 이내만 실행
+  if (m % 10 === 0 && s < 10) {
+    try {
+      const res = await axios.post(`${PUBLIC_API_URL}/api/event/resolve`);
+      console.log(`[AutoResolve ${now.toISOString()}]`, res.data.slotId, '→ x' + res.data.multiplier);
+    } catch (e: any) {
+      console.error(`[AutoResolve failed ${now.toISOString()}]`, e.message);
+    }
+  }
+}, 5000); // 5초마다 검사 (오버랩 방지)

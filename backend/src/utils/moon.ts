@@ -31,7 +31,7 @@ export function isBettingWindow(date = new Date()) {
   const kst = toKST(date);
   const h = kst.getHours();
   const m = kst.getMinutes();
-  if (h < 21 || h > 23) return false;
+  //if (h < 21 || h > 23) return false;
   const mod = m % 10;
   return mod >= 1 && mod <= 9;
 }

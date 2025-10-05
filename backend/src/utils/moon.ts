@@ -45,14 +45,6 @@ export function resultTimeOfCurrentSlot(date = new Date()) {
   return base;
 }
 
-// 프런트와 동일한 runbility 계산 (현재 사용 중인 공식으로 교체)
-export function getRunbility(timeSec: number, distanceKm: number) {
-  // 예시(사용중인 util과 동일하게 맞춰야 함):
-  const pace = timeSec / (distanceKm || 1); // sec/km
-  // ... 실제 사이트에서 쓰는 공식을 그대로 옮겨오세요.
-  // 여기선 placeholder:
-  return Math.max(0, 10000 - pace);
-}
 
 // 보름달 코인 합성 공식
 export function mergeMoon(oldMoon: number, runbility: number) {

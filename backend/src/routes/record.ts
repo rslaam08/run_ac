@@ -5,7 +5,8 @@ import multer from 'multer';
 import { Types } from 'mongoose';
 import Record from '../models/Record';
 import { ensureJwt } from '../middleware/jwt';
-import { isWithinEvent, getRunbility, mergeMoon } from '../utils/moon';
+import { isWithinEvent, mergeMoon } from '../utils/moon';
+import {getRunbility} from '../utils/runbility';
 import User from '../models/User';
 
 const router = express.Router();

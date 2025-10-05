@@ -1,3 +1,4 @@
+// backend/src/server.ts
 import 'dotenv/config';
 import express from 'express';
 import mongoose from 'mongoose';
@@ -43,25 +44,21 @@ app.set('trust proxy', 1);
 // ✅ CORS: *반드시* 라우터보다 먼저
 const corsOptions: CorsOptions = {
   origin(origin, cb) {
-    if (!origin) return cb(null, true); // 같은 오리진 or 서버 내부 호출 허용
+    if (!origin) return cb(null, true); // same-origin or server-side
     const norm = origin.replace(/\/$/, '');
     const ok = ALLOWED_ORIGINS.map(o => o.replace(/\/$/, ''));
-    if (ok.includes(norm)) {
-      return cb(null, true);
-    } else {
-      return cb(new Error(`CORS blocked for origin: ${origin}`));
-    }
+    return cb(null, ok.includes(norm));
   },
   credentials: true, // axios withCredentials 대응
-  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
+  methods: ['GET','POST','PUT','PATCH','DELETE','OPTIONS'],
+  allowedHeaders: ['Content-Type','Authorization'],
   exposedHeaders: ['Content-Type'],
   maxAge: 86400,
 };
 
 app.use(cors(corsOptions));
-// ✅ 프리플라이트 OPTIONS 허용
-app.options('*', cors(corsOptions));
+// ❌ (원인) app.options('*', ...)  →  Express 5에서 별표 경로가 invalid
+// ✅ 아예 필요 없음. cors 미들웨어가 프리플라이트 응답(204)을 자동 처리함.
 
 // JSON 파서 (CORS 뒤, 라우터 앞)
 app.use(express.json());
@@ -70,37 +67,34 @@ app.use(express.json());
 app.use('/uploads', express.static(UPLOAD_DIR));
 
 // ============================= 세션 & 패스포트 =============================
-app.use(
-  session({
-    name: 'smsession',
-    secret: process.env.SESSION_SECRET!,
-    resave: false,
-    saveUninitialized: false,
-    store: MongoStore.create({
-      mongoUrl: MONGO,
-      ttl: 60 * 60 * 24 * 7,
-      autoRemove: 'native',
-    }),
-    cookie: isProd
-      ? { maxAge: 24 * 60 * 60 * 1000, sameSite: 'none', secure: true }
-      : { maxAge: 24 * 60 * 60 * 1000, sameSite: 'lax', secure: false },
-  })
-);
+app.use(session({
+  name: 'smsession',
+  secret: process.env.SESSION_SECRET!,
+  resave: false,
+  saveUninitialized: false,
+  store: MongoStore.create({
+    mongoUrl: MONGO,
+    ttl: 60 * 60 * 24 * 7,
+    autoRemove: 'native'
+  }),
+  cookie: isProd
+    ? { maxAge: 24*60*60*1000, sameSite: 'none', secure: true }
+    : { maxAge: 24*60*60*1000, sameSite: 'lax',  secure: false }
+}));
 
 app.use(passport.initialize());
 app.use(passport.session());
 
 // ============================= DB 연결 =============================
-mongoose
-  .connect(MONGO)
+mongoose.connect(MONGO)
   .then(() => console.log('✅ MongoDB connected'))
   .catch(err => console.error('❌ MongoDB connection error:', err));
 
 // ============================= 라우터 등록 =============================
-app.use('/auth', authRouter);
-app.use('/api/user', userRouter);
+app.use('/auth',        authRouter);
+app.use('/api/user',    userRouter);
 app.use('/api/records', recordRouter);
-app.use('/api/event', eventRouter);
+app.use('/api/event',   eventRouter);
 
 // 헬스체크
 app.get('/', (_req, res) => {
@@ -118,27 +112,21 @@ app.use((req, res) => {
   res.status(404).json({ message: `Cannot ${req.method} ${req.originalUrl}` });
 });
 
-app.use(
-  (
-    err: any,
-    _req: express.Request,
-    res: express.Response,
-    _next: express.NextFunction
-  ) => {
-    if (err instanceof multer.MulterError) {
-      if (err.code === 'LIMIT_FILE_SIZE') {
-        return res
-          .status(400)
-          .json({ error: '이미지 용량은 50MB 이하여야 합니다.' });
-      }
-      return res
-        .status(400)
-        .json({ error: `업로드 오류: ${err.message}` });
+app.use((
+  err: any,
+  _req: express.Request,
+  res: express.Response,
+  _next: express.NextFunction
+) => {
+  if (err instanceof multer.MulterError) {
+    if (err.code === 'LIMIT_FILE_SIZE') {
+      return res.status(400).json({ error: '이미지 용량은 50MB 이하여야 합니다.' });
     }
-    console.error('[Global Error]', err);
-    res.status(500).json({ error: '서버 오류가 발생했습니다.' });
+    return res.status(400).json({ error: `업로드 오류: ${err.message}` });
   }
-);
+  console.error('[Global Error]', err);
+  res.status(500).json({ error: '서버 오류가 발생했습니다.' });
+});
 
 // ============================= START =============================
 app.listen(PORT, () => {

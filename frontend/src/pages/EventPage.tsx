@@ -43,6 +43,7 @@ const EventPage: React.FC = () => {
       const r = await eventApi.status();
       setStatus(r.data);
     } catch {
+      // 비로그인 시 401 가능
       setStatus(null);
     }
   };
@@ -61,7 +62,7 @@ const EventPage: React.FC = () => {
   const loadAllLogs = async () => {
     try {
       const r = await eventApi.allLogs();
-      setLogs(r.data.logs || []);
+      setLogs(r.data?.logs ?? []);
     } catch {
       setLogs([]);
     }
@@ -86,28 +87,42 @@ const EventPage: React.FC = () => {
       const t = localStorage.getItem('runac_jwt');
       if (t) {
         const [, p] = t.split('.');
-        const payload = JSON.parse(atob(p.replace(/-/g, '+').replace(/_/g, '/')));
+        const payload = JSON.parse(
+          atob(p.replace(/-/g, '+').replace(/_/g, '/'))
+        );
         setIsAdmin(payload?.seq === 1);
       }
-    } catch {}
+    } catch {
+      // noop
+    }
   }, []);
 
   return (
     <div className="event-page">
       <div className="event-tabs">
-        <button className={tab === 'desc' ? 'active' : ''} onClick={() => setTab('desc')}>
+        <button
+          className={tab === 'desc' ? 'active' : ''}
+          onClick={() => setTab('desc')}
+        >
           추석 이벤트🌕 안내
         </button>
-        <button className={tab === 'casino' ? 'active' : ''} onClick={() => setTab('casino')}>
+        <button
+          className={tab === 'casino' ? 'active' : ''}
+          onClick={() => setTab('casino')}
+        >
           보름달 도박장
         </button>
-        <button className={tab === 'market' ? 'active' : ''} onClick={() => setTab('market')}>
+        <button
+          className={tab === 'market' ? 'active' : ''}
+          onClick={() => setTab('market')}
+        >
           보름달 마켓
         </button>
       </div>
 
       <div className="event-balance">
-        보름달 코인 🌕: {Math.floor(status?.moon ?? 0).toLocaleString()}
+        보름달 코인 🌕:{' '}
+        {Math.floor(status?.moon ?? 0).toLocaleString()}
       </div>
 
       {tab === 'desc' && (
@@ -115,7 +130,10 @@ const EventPage: React.FC = () => {
           <h2>페이지 설명</h2>
           <p>이곳에 설명을 입력하세요</p>
           <p>이벤트 기간: 2025-10-06 ~ 2025-10-12 (KST)</p>
-          <p>도박장 오픈: 매일 21:00~23:59 / 각 10분 슬롯 (:01~:09 베팅, :10 결과)</p>
+          <p>
+            도박장 오픈: 매일 21:00~23:59 / 각 10분 슬롯 (:01~:09 베팅, :10
+            결과)
+          </p>
         </section>
       )}
 
@@ -123,7 +141,8 @@ const EventPage: React.FC = () => {
         <section className="event-section">
           <h2>보름달 도박장</h2>
           <p>
-            현재 슬롯: {status?.nowSlotId} ({status?.isBettingWindow ? '베팅 가능' : '대기'})
+            현재 슬롯: {status?.nowSlotId} (
+            {status?.isBettingWindow ? '베팅 가능' : '대기'})
           </p>
 
           <div className="bet-box">
@@ -138,7 +157,8 @@ const EventPage: React.FC = () => {
               onClick={async () => {
                 try {
                   const n = Number(amount);
-                  if (!Number.isFinite(n) || n <= 0) return alert('금액을 올바르게 입력');
+                  if (!Number.isFinite(n) || n <= 0)
+                    return alert('금액을 올바르게 입력');
                   await eventApi.bet(n);
                   alert('베팅 완료!');
                   setAmount('');
@@ -160,3 +180,95 @@ const EventPage: React.FC = () => {
                   await loadStatus();
                   await loadAllLogs();
                 } catch (e: any) {
+                  alert(e?.response?.data?.error || '결과 처리 실패');
+                }
+              }}
+            >
+              결과 갱신
+            </button>
+          </div>
+
+          <div className="logs">
+            <h3>전체 참여 로그</h3>
+            {logs.length === 0 && <div>참여 로그가 없습니다.</div>}
+            {logs.map((slot) => (
+              <div key={slot.slotId} className="slot-log">
+                <h4>
+                  {slot.slotId} — 결과 x{slot.multiplier}
+                </h4>
+                <ul>
+                  {slot.participants.map((p, idx) => (
+                    <li key={`${slot.slotId}-${p.userSeq}-${idx}`}>
+                      user #{p.userSeq} — {p.amount.toLocaleString()}🌕 →{' '}
+                      {p.payout.toLocaleString()}🌕
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {tab === 'market' && (
+        <section className="event-section">
+          <h2>보름달 마켓</h2>
+
+          {marketError && (
+            <div className="text-red-600 text-sm mb-2">{marketError}</div>
+          )}
+
+          {(!items || items.length === 0) && !marketError && (
+            <div className="text-gray-500 text-sm mb-2">
+              표시할 상품이 없습니다. (로그인 상태 또는 서버 응답을 확인하세요)
+            </div>
+          )}
+
+          <div className="market-grid">
+            {items.map((it) => (
+              <div key={it.id} className="market-card">
+                <div className="img-holder">[이미지 자리]</div>
+                <div className="name">{it.name}</div>
+                <div className="price">
+                  {it.price.toLocaleString()} 🌕
+                </div>
+                <button
+                  disabled={!!it.bought}
+                  onClick={async () => {
+                    try {
+                      await eventApi.buy(it.id);
+                      alert('구매 완료!');
+                      await loadStatus();
+                      await loadMarket();
+                    } catch (e: any) {
+                      alert(e?.response?.data?.error || '구매 실패');
+                    }
+                  }}
+                >
+                  {it.bought ? '구매완료' : '구매'}
+                </button>
+              </div>
+            ))}
+          </div>
+
+          {isAdmin && (
+            <>
+              <h3>구매 내역 (admin)</h3>
+              <button onClick={loadAdminPurchases}>새로고침</button>
+              <ul>
+                {purchases.map((p: any) => (
+                  <li key={p._id}>
+                    user #{p.userSeq} — {p.itemId} —{' '}
+                    {p.price.toLocaleString()}🌕
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+        </section>
+      )}
+    </div>
+  );
+};
+
+export default EventPage;

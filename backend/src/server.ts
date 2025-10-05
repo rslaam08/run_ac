@@ -4,7 +4,6 @@ import express from 'express';
 import mongoose from 'mongoose';
 import passport from 'passport';
 import session from 'express-session';
-import cors from 'cors';
 import path from 'path';
 import multer from 'multer';
 import MongoStore from 'connect-mongo';
@@ -19,83 +18,89 @@ const app = express();
 const isProd = process.env.NODE_ENV === 'production';
 const PORT = Number(process.env.PORT || 4000);
 
-const DEFAULT_ORIGINS = ['http://localhost:3000', 'https://rslaam08.github.io'];
+// ===== 환경값/기본값
+const DEFAULT_ORIGINS = ['https://rslaam08.github.io', 'http://localhost:3000'];
 const CLIENT_URLS = (process.env.CLIENT_URLS || process.env.CLIENT_URL || '')
-  .split(',')
-  .map(s => s.trim())
-  .filter(Boolean);
-const ALLOWED_ORIGINS = CLIENT_URLS.length ? CLIENT_URLS : DEFAULT_ORIGINS;
+  .split(',').map(s => s.trim()).filter(Boolean);
+const ALLOWED_ORIGINS = [...new Set((CLIENT_URLS.length ? CLIENT_URLS : DEFAULT_ORIGINS))]
+  .map(o => o.replace(/\/$/, '')); // trailing slash 제거
 
 const PUBLIC_API_URL = (process.env.PUBLIC_API_URL || `http://localhost:${PORT}`).replace(/\/$/, '');
 const UPLOAD_DIR = process.env.UPLOAD_DIR || path.join(__dirname, '../uploads');
-const MONGO = process.env.MONGODB_URI || process.env.MONGO_URI;
 
+const MONGO = process.env.MONGODB_URI || process.env.MONGO_URI;
 if (!MONGO) {
   console.error('❌ MONGODB_URI(.env)가 필요합니다.');
   process.exit(1);
 }
 
-// ✅ CORS: 반드시 라우터보다 먼저 선언
+// 프록시 뒤 secure 쿠키 허용
 app.set('trust proxy', 1);
-app.use(
-  cors({
-    origin(origin, cb) {
-      // 같은 오리진 또는 서버 내부 요청
-      if (!origin) return cb(null, true);
-      const norm = origin.replace(/\/$/, '');
-      const ok = ALLOWED_ORIGINS.map(o => o.replace(/\/$/, ''));
-      if (ok.includes(norm)) return cb(null, true);
-      console.warn('[CORS BLOCKED]', origin);
-      return cb(new Error(`CORS blocked for origin: ${origin}`));
-    },
-    credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
-    exposedHeaders: ['Content-Type'],
-  })
-);
-// ✅ preflight 자동 응답
-app.options('*', cors());
 
-// ✅ JSON 파서 및 정적파일
+// ===================== CORS (직접 처리·와일드카드 없음) =====================
+function isAllowedOrigin(origin?: string) {
+  if (!origin) return false;
+  const norm = origin.replace(/\/$/, '');
+  return ALLOWED_ORIGINS.includes(norm) || ALLOWED_ORIGINS.some(o => norm.startsWith(o));
+}
+app.use((req, res, next) => {
+  const origin = (req.headers.origin as string | undefined) || '';
+  const allowed = isAllowedOrigin(origin);
+
+  if (allowed) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Vary', 'Origin');
+  }
+  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Authorization, Content-Type');
+  // JWT는 헤더로만 쓰므로 쿠키 공유 불필요
+  res.setHeader('Access-Control-Allow-Credentials', 'false');
+
+  // 캐시 금지(304 혼선 방지)
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+
+  // 프리플라이트 즉시 종료 (와일드카드 경로 등록 안 함!)
+  if (req.method === 'OPTIONS') return res.sendStatus(204);
+  next();
+});
+
+// ===================== 기본 미들웨어 =====================
+app.set('etag', false);
 app.use(express.json());
 app.use('/uploads', express.static(UPLOAD_DIR));
 
-// ✅ 세션
-app.use(
-  session({
-    name: 'smsession',
-    secret: process.env.SESSION_SECRET || 'fallback_secret',
-    resave: false,
-    saveUninitialized: false,
-    store: MongoStore.create({
-      mongoUrl: MONGO,
-      ttl: 60 * 60 * 24 * 7,
-      autoRemove: 'native',
-    }),
-    cookie: isProd
-      ? { maxAge: 24 * 60 * 60 * 1000, sameSite: 'none', secure: true }
-      : { maxAge: 24 * 60 * 60 * 1000, sameSite: 'lax', secure: false },
-  })
-);
+app.use(session({
+  name: 'smsession',
+  secret: process.env.SESSION_SECRET || 'fallback_secret',
+  resave: false,
+  saveUninitialized: false,
+  store: MongoStore.create({
+    mongoUrl: MONGO,
+    ttl: 60 * 60 * 24 * 7,
+    autoRemove: 'native',
+  }),
+  cookie: isProd
+    ? { maxAge: 24 * 60 * 60 * 1000, sameSite: 'none', secure: true }
+    : { maxAge: 24 * 60 * 60 * 1000, sameSite: 'lax',  secure: false },
+}));
 
-// ✅ Passport
 app.use(passport.initialize());
 app.use(passport.session());
 
-// ✅ MongoDB 연결
-mongoose
-  .connect(MONGO)
+// ===================== DB =====================
+mongoose.connect(MONGO)
   .then(() => console.log('✅ MongoDB connected'))
   .catch(err => console.error('❌ MongoDB connection error:', err));
 
-// ✅ 라우터 (세션 이후)
-app.use('/auth', authRouter);
-app.use('/api/user', userRouter);
+// ===================== 라우터 (CORS/세션/패스포트 이후) =====================
+app.use('/auth',        authRouter);
+app.use('/api/user',    userRouter);
 app.use('/api/records', recordRouter);
-app.use('/api/event', eventRouter);
+app.use('/api/event',   eventRouter);
 
-// ✅ 헬스체크
+// ===================== 헬스체크 =====================
 app.get('/', (_req, res) => {
   res.json({
     status: 'ok',
@@ -106,22 +111,28 @@ app.get('/', (_req, res) => {
   });
 });
 
-// ✅ 404 핸들러 (Express 5: 경로 없이!)
+// ===================== 404 & 에러 핸들러 =====================
+// ⚠ Express 5에서는 catch-all에 문자열 경로 쓰지 말 것
 app.use((req, res) => {
   res.status(404).json({ message: `Cannot ${req.method} ${req.originalUrl}` });
 });
-
-// ✅ 전역 에러 핸들러
-app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+app.use((
+  err: any,
+  _req: express.Request,
+  res: express.Response,
+  _next: express.NextFunction
+) => {
   if (err instanceof multer.MulterError) {
-    if (err.code === 'LIMIT_FILE_SIZE')
+    if (err.code === 'LIMIT_FILE_SIZE') {
       return res.status(400).json({ error: '이미지 용량은 50MB 이하여야 합니다.' });
+    }
     return res.status(400).json({ error: `업로드 오류: ${err.message}` });
   }
   console.error('[Global Error]', err);
   res.status(500).json({ error: '서버 오류가 발생했습니다.' });
 });
 
+// ===================== START =====================
 app.listen(PORT, () => {
   console.log(`🚀 Server running on ${PUBLIC_API_URL}`);
 });

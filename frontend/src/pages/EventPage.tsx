@@ -122,7 +122,7 @@ const EventPage: React.FC = () => {
               type="number"
               min={1}
               step={1}
-              placeholder="정수 단위로 베팅 금액"
+              placeholder="정수를 입력하세요"
               value={amount}
               onChange={(e)=> {
                 // 숫자 문자열만 허용 — 빈 문자열 허용
@@ -153,7 +153,7 @@ const EventPage: React.FC = () => {
           </div>
 
           <div className="logs">
-            <h3>참여 로그 & 결과 (최근)</h3>
+            <h3>참여 로그 & 결과</h3>
             {!logs.length && <div>로딩… 혹은 아직 베팅 없음</div>}
             {logs.length > 0 && (
               <table className="logs-table">

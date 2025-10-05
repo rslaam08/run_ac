@@ -107,6 +107,8 @@ const EventPage: React.FC = () => {
           <p>확률적으로 더 큰 보상을 얻게 됩니다!</p>
           <p></p>
           <p>3, 보름달 코인🌕을 모은 후 보름달 상점 페이지에서 원하는 상품을 받아가세요!</p>
+          <p>각 상품은 한 번씩만 구매할 수 있습니다.</p>
+          <p>이용약관 https://docs.google.com/document/d/1Pj9xxoJlaCqlsTIlHQ0qEPJLuMLSiTgpp8RPpRs82AY/edit?hl=ko&tab=t.0</p>
         </section>
       )}
 

@@ -18,21 +18,11 @@ type MarketItem = {
   bought?: boolean;
 };
 
-type SlotLog = {
-  slotId: string;
-  multiplier: number | null; // 미확정이면 null
-  participants: {
-    userSeq: number;
-    amount: number;
-    payout: number | null;   // 미확정이면 null
-  }[];
-};
-
 const EventPage: React.FC = () => {
   const [tab, setTab] = useState<'desc' | 'casino' | 'market'>('desc');
   const [status, setStatus] = useState<Status | null>(null);
   const [amount, setAmount] = useState('');
-  const [logs, setLogs] = useState<SlotLog[]>([]);
+  const [logs, setLogs] = useState<any>(null);
   const [items, setItems] = useState<MarketItem[]>([]);
   const [purchases, setPurchases] = useState<any[]>([]);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -58,12 +48,13 @@ const EventPage: React.FC = () => {
     }
   };
 
-  const loadAllLogs = async () => {
+  const loadLogs = async () => {
+    if (!status?.nowSlotId) return;
     try {
-      const r = await eventApi.allLogs();
-      setLogs(r.data?.logs ?? []);
+      const r = await eventApi.logs(status.nowSlotId);
+      setLogs(r.data);
     } catch {
-      setLogs([]);
+      setLogs(null);
     }
   };
 
@@ -80,8 +71,6 @@ const EventPage: React.FC = () => {
   useEffect(() => {
     loadStatus();
     loadMarket();
-    loadAllLogs();
-    // JWT payload에서 seq==1 확인
     try {
       const t = localStorage.getItem('runac_jwt');
       if (t) {
@@ -92,14 +81,9 @@ const EventPage: React.FC = () => {
     } catch {}
   }, []);
 
-  // 자동 새로고침(선택): 30초마다 전체 로그/잔액 리프레시
   useEffect(() => {
-    const id = window.setInterval(() => {
-      loadStatus();
-      loadAllLogs();
-    }, 30000);
-    return () => clearInterval(id);
-  }, []);
+    loadLogs();
+  }, [status?.nowSlotId]);
 
   return (
     <div className="event-page">
@@ -115,9 +99,7 @@ const EventPage: React.FC = () => {
         </button>
       </div>
 
-      <div className="event-balance">
-        보름달 코인 🌕: {Math.floor(status?.moon ?? 0).toLocaleString()}
-      </div>
+      <div className="event-balance">보름달 코인 🌕: {Math.floor(status?.moon ?? 0).toLocaleString()}</div>
 
       {tab === 'desc' && (
         <section className="event-section">
@@ -131,8 +113,9 @@ const EventPage: React.FC = () => {
       {tab === 'casino' && (
         <section className="event-section">
           <h2>보름달 도박장</h2>
-          <p>현재 슬롯: {status?.nowSlotId} ({status?.isBettingWindow ? '베팅 가능' : '대기'})</p>
-
+          <p>
+            현재 슬롯: {status?.nowSlotId} ({status?.isBettingWindow ? '베팅 가능' : '대기'})
+          </p>
           <div className="bet-box">
             <input
               type="number"
@@ -142,6 +125,7 @@ const EventPage: React.FC = () => {
               onChange={(e) => setAmount(e.target.value)}
             />
             <button
+              type="button"
               onClick={async () => {
                 try {
                   const n = Number(amount);
@@ -150,7 +134,7 @@ const EventPage: React.FC = () => {
                   alert('베팅 완료!');
                   setAmount('');
                   await loadStatus();
-                  await loadAllLogs();
+                  await loadLogs();
                 } catch (e: any) {
                   alert(e?.response?.data?.error || '베팅 실패');
                 }
@@ -161,24 +145,20 @@ const EventPage: React.FC = () => {
           </div>
 
           <div className="logs">
-            <h3>전체 참여 로그</h3>
-            {logs.length === 0 && <div>참여 로그가 없습니다.</div>}
-            {logs.map((slot) => (
-              <div key={slot.slotId} className="slot-log">
-                <h4>
-                  {slot.slotId} — 결과 {slot.multiplier == null ? '(미확정)' : `x${slot.multiplier}`}
-                </h4>
+            <h3>참여 로그 & 결과</h3>
+            {!logs && <div>로딩…</div>}
+            {logs && (
+              <>
+                <div>결과: x{logs.slot?.multiplier ?? '(미확정)'}</div>
                 <ul>
-                  {slot.participants.map((p, idx) => (
-                    <li key={`${slot.slotId}-${p.userSeq}-${idx}`}>
-                      user #{p.userSeq} — {p.amount.toLocaleString()}🌕
-                      {' → '}
-                      {p.payout == null ? '-' : `${p.payout.toLocaleString()}🌕`}
+                  {logs.bets?.map((b: any) => (
+                    <li key={b._id}>
+                      user #{b.userSeq} — {b.amount.toLocaleString()}🌕
                     </li>
                   ))}
                 </ul>
-              </div>
-            ))}
+              </>
+            )}
           </div>
         </section>
       )}
@@ -202,6 +182,7 @@ const EventPage: React.FC = () => {
                 <div className="name">{it.name}</div>
                 <div className="price">{it.price.toLocaleString()} 🌕</div>
                 <button
+                  type="button"
                   disabled={!!it.bought}
                   onClick={async () => {
                     try {
@@ -223,7 +204,9 @@ const EventPage: React.FC = () => {
           {isAdmin && (
             <>
               <h3>구매 내역 (admin)</h3>
-              <button onClick={loadAdminPurchases}>새로고침</button>
+              <button type="button" onClick={loadAdminPurchases}>
+                새로고침
+              </button>
               <ul>
                 {purchases.map((p: any) => (
                   <li key={p._id}>

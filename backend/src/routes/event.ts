@@ -22,14 +22,17 @@ function getJwtUser(
 /** 배수 분포 함수 (랜덤 도박 결과) */
 function pickMultiplierRandom(): number {
   const r = Math.random() * 100;
-  if (r < 30) return 0;
-  if (r < 55) return 0.5;
-  if (r < 75) return 1;
-  if (r < 90) return 1.5;
-  const r2 = (r - 90) * 10; // 0~100
-  if (r2 < 60) return 2;
-  if (r2 < 96) return 4;
-  return 8;
+
+  if (r < 9) return 0;           // 9%
+  if (r < 16) return 0.25;       // 7%
+  if (r < 26) return 0.5;        // 10%
+  if (r < 38) return 0.75;       // 12%
+  if (r < 56) return 1;          // 18%
+  if (r < 70) return 1.25;       // 14%
+  if (r < 82) return 1.5;        // 12%
+  if (r < 92) return 2;          // 10%
+  if (r < 98) return 4;          // 6%
+  return 8;                      // 2%
 }
 
 /** 즉시 베팅용 slotId 생성: im-YYYYMMDD-HH-MM-SS-sss-userSeq */

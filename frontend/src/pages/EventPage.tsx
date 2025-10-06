@@ -92,24 +92,44 @@ const EventPage: React.FC = () => {
 
       {tab==='desc' && (
         <section className="event-section">
-          <h2>페이지 설명</h2>
-          <p>이벤트 기간: 2025-10-06 ~ 2025-10-12 (KST)</p>
-          <p>달리기를 해서 보름달 코인🌕을 쌓고 상품을 받아가세요!</p>
-          <p></p>
-          <p>🌕 획득 방법</p>
-          <p>1, 달리기 기록을 올린다</p>
-          <p>달리기마다 🌕 = (🌕^1.5 + (rating)^1.5)^0.667</p>
-          <p>의 공식으로 🌕를 얻을 수 있어요!</p>
-          <p></p>
-          <p>2, 도박장에서 코인 도박을 한다</p>
+          <h2>🌕 추석 이벤트 안내</h2>
 
-          <p>여러분은 보름달 코인🌕을 운명에 맡길 수 있으며</p>
-          <p>확률적으로 더 큰 보상을 얻게 됩니다!</p>
-          <p></p>
-          <p>3, 보름달 코인🌕을 모은 후 보름달 상점 페이지에서</p>
-          <p> 원하는 상품을 받아가세요!</p>
-          <p>각 상품은 한 번씩만 구매할 수 있습니다.</p>
-          <p>이용약관 https://docs.google.com/document/d/1Pj9xxoJlaCqlsTIlHQ0qEPJLuMLSiTgpp8RPpRs82AY/edit?hl=ko&tab=t.0</p>
+          <div className="event-desc">
+            <p><strong>이벤트 기간:</strong> 2025-10-06 ~ 2025-10-12 (KST)</p>
+            <p>달리기를 해서 <strong>보름달 코인🌕</strong>을 쌓고 상품을 받아가세요!</p>
+          </div>
+
+          <hr />
+
+          <div className="event-steps">
+            <h3>🌕 획득 방법</h3>
+
+            <ol>
+              <li>
+                <strong>달리기 기록을 올린다</strong><br/>
+                달리기마다 다음 공식이 적용돼요 (누적값 아님):<br/>
+                <code>🌕 = (🌕<sup>1.5</sup> + (rating)<sup>1.5</sup>)<sup>0.667</sup></code>
+              </li>
+
+              <li>
+                <strong>도박장에서 코인 도박을 한다</strong><br/>
+                보름달 코인🌕을 운명에 맡기면,<br/>
+                확률적으로 더 큰 보상을 얻을 수 있어요!
+              </li>
+
+              <li>
+                <strong>보름달 상점에서 상품을 교환한다</strong><br/>
+                코인을 모아 원하는 상품을 받아가세요!<br/>
+                각 상품은 한 번만 구매할 수 있습니다.
+              </li>
+            </ol>
+          </div>
+
+          <hr />
+
+          <p style={{ fontSize: '0.9em', color: '#666' }}>
+  📜 <a href="https://bit.ly/4nCPxJD" target="_blank" rel="noopener noreferrer">이용약관 보기</a>
+          </p>
         </section>
       )}
 

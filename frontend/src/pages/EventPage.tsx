@@ -128,7 +128,7 @@ const EventPage: React.FC = () => {
           <hr />
 
           <p style={{ fontSize: '0.9em', color: '#666' }}>
-  📜 <a href="https://bit.ly/4nCPxJD" target="_blank" rel="noopener noreferrer">이용약관 보기</a>
+            📜 <a href="https://bit.ly/4nCPxJD" target="_blank" rel="noopener noreferrer">이용약관 보기</a>
           </p>
         </section>
       )}
@@ -146,23 +146,22 @@ const EventPage: React.FC = () => {
               placeholder="정수를 입력하세요"
               value={amount}
               onChange={(e)=> {
-                // 숫자 문자열만 허용 — 빈 문자열 허용
+                // 숫자 문자열만 허용 — 빈 문자열 허용 (음수/소수 불허)
                 const v = e.target.value;
-                // allow empty, or digits only (음수/소수 허용X)
-                if (v === '' || /^-?\d*$/.test(v)) setAmount(v);
+                if (v === '' || /^\d*$/.test(v)) setAmount(v);
               }}
             />
             <button
               onClick={async ()=> {
                 try {
-                  const n = Number(amount);
+                  const n = Math.floor(Number(amount));
                   if (!Number.isFinite(n) || !Number.isInteger(n) || n <= 0) {
                     return alert('베팅 금액은 1 이상의 정수로 입력하세요.');
                   }
                   const r = await eventApi.bet(n);
                   // API 응답 구조에 맞춰 표시
                   const bet = r.data.bet ?? r.data;
-                  alert(`결과: x${bet.multiplier} → 지급 ${Number(bet.payout).toLocaleString()}🌕\n남은 코인: ${Number(r.data.remain ?? r.data.remain ?? 0).toLocaleString()}`);
+                  alert(`결과: x${bet.multiplier} → 지급 ${Number(bet.payout).toLocaleString()}🌕\n남은 코인: ${Number(r.data.remain ?? 0).toLocaleString()}`);
                   setAmount('');
                   await loadStatus();
                   await loadAllLogs();
@@ -172,6 +171,41 @@ const EventPage: React.FC = () => {
               }}
             >베팅</button>
           </div>
+
+          {/* 🎲 확률표 (토글) */}
+          <details style={{ marginTop: '12px', marginBottom: '12px' }}>
+            <summary style={{ cursor: 'pointer', fontWeight: 700, fontSize: '1.05rem' }}>
+              🎲 도박장 확률 보기
+            </summary>
+            <div style={{ marginTop: '8px' }}>
+              <table style={{ borderCollapse: 'collapse', width: '100%' }}>
+                <thead>
+                  <tr style={{ borderBottom: '1px solid #ccc', background: '#f8f8f8' }}>
+                    <th style={{ padding: '6px', textAlign: 'left' }}>배율</th>
+                    <th style={{ padding: '6px', textAlign: 'right' }}>확률(%)</th>
+                    <th style={{ padding: '6px', textAlign: 'right' }}>기대 보상</th>
+                    <th style={{ padding: '6px', textAlign: 'left' }}>설명</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr><td style={{padding:'6px'}}>0×</td><td style={{padding:'6px', textAlign:'right'}}>18.00%</td><td style={{padding:'6px', textAlign:'right'}}>0.00</td><td style={{padding:'6px'}}>모든 코인을 잃습니다.</td></tr>
+                  <tr><td style={{padding:'6px'}}>0.25×</td><td style={{padding:'6px', textAlign:'right'}}>7.00%</td><td style={{padding:'6px', textAlign:'right'}}>0.018</td><td style={{padding:'6px'}}>일부만 반환됩니다.</td></tr>
+                  <tr><td style={{padding:'6px'}}>0.5×</td><td style={{padding:'6px', textAlign:'right'}}>10.00%</td><td style={{padding:'6px', textAlign:'right'}}>0.05</td><td style={{padding:'6px'}}>절반만 반환됩니다.</td></tr>
+                  <tr><td style={{padding:'6px'}}>0.75×</td><td style={{padding:'6px', textAlign:'right'}}>12.00%</td><td style={{padding:'6px', textAlign:'right'}}>0.09</td><td style={{padding:'6px'}}>거의 본전 수준입니다.</td></tr>
+                  <tr><td style={{padding:'6px'}}>1×</td><td style={{padding:'6px', textAlign:'right'}}>18.00%</td><td style={{padding:'6px', textAlign:'right'}}>0.18</td><td style={{padding:'6px'}}>본전입니다.</td></tr>
+                  <tr><td style={{padding:'6px'}}>1.25×</td><td style={{padding:'6px', textAlign:'right'}}>13.50%</td><td style={{padding:'6px', textAlign:'right'}}>0.16875</td><td style={{padding:'6px'}}>약간의 이득을 얻습니다.</td></tr>
+                  <tr><td style={{padding:'6px'}}>1.5×</td><td style={{padding:'6px', textAlign:'right'}}>11.00%</td><td style={{padding:'6px', textAlign:'right'}}>0.165</td><td style={{padding:'6px'}}>확실한 이득입니다.</td></tr>
+                  <tr><td style={{padding:'6px'}}>2×</td><td style={{padding:'6px', textAlign:'right'}}>8.00%</td><td style={{padding:'6px', textAlign:'right'}}>0.16</td><td style={{padding:'6px'}}>두 배의 보상을 받습니다.</td></tr>
+                  <tr><td style={{padding:'6px'}}>4×</td><td style={{padding:'6px', textAlign:'right'}}>2.00%</td><td style={{padding:'6px', textAlign:'right'}}>0.08</td><td style={{padding:'6px'}}>큰 행운입니다!</td></tr>
+                  <tr><td style={{padding:'6px'}}>8×</td><td style={{padding:'6px', textAlign:'right'}}>0.50%</td><td style={{padding:'6px', textAlign:'right'}}>0.04</td><td style={{padding:'6px'}}>매우 희귀한 대박입니다 🎉</td></tr>
+                </tbody>
+              </table>
+              <p style={{ fontSize: '0.9rem', color: '#666', marginTop: '6px' }}>
+                총 기댓값 ≈ <b>0.9895배 (−1.05%)</b><br/>
+                각 베팅은 독립적인 확률 사건입니다.
+              </p>
+            </div>
+          </details>
 
           <div className="logs">
             <h3>참여 로그 & 결과</h3>

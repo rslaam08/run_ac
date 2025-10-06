@@ -23,17 +23,18 @@ function getJwtUser(
 function pickMultiplierRandom(): number {
   const r = Math.random() * 100;
 
-  if (r < 9) return 0;           // 9%
-  if (r < 16) return 0.25;       // 7%
-  if (r < 26) return 0.5;        // 10%
-  if (r < 38) return 0.75;       // 12%
-  if (r < 56) return 1;          // 18%
-  if (r < 70) return 1.25;       // 14%
-  if (r < 82) return 1.5;        // 12%
-  if (r < 92) return 2;          // 10%
-  if (r < 98) return 4;          // 6%
-  return 8;                      // 2%
+  if (r < 18.0) return 0;        // 18.00%
+  if (r < 25.0) return 0.25;     // 7.00%
+  if (r < 35.0) return 0.5;      // 10.00%
+  if (r < 47.0) return 0.75;     // 12.00%
+  if (r < 65.0) return 1;        // 18.00%
+  if (r < 78.5) return 1.25;     // 13.50%
+  if (r < 89.5) return 1.5;      // 11.00%
+  if (r < 97.5) return 2;        // 8.00%
+  if (r < 99.5) return 4;        // 2.00%
+  return 8;                      // 0.50%
 }
+
 
 /** 즉시 베팅용 slotId 생성: im-YYYYMMDD-HH-MM-SS-sss-userSeq */
 function makeImmediateSlotId(userSeq: number, d = new Date()) {

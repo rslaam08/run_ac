@@ -92,7 +92,7 @@ const EventPage: React.FC = () => {
 
       {tab==='desc' && (
         <section className="event-section">
-          <h2>🌕 추석 이벤트 안내</h2>
+          <h2>추석 이벤트 안내 🌕</h2>
 
           <div className="event-desc">
             <p><strong>이벤트 기간:</strong> 2025-10-06 ~ 2025-10-12 (KST)</p>
@@ -102,7 +102,7 @@ const EventPage: React.FC = () => {
           <hr />
 
           <div className="event-steps">
-            <h3>🌕 획득 방법</h3>
+            <h3>보름달 코인 획득 방법</h3>
 
             <ol>
               <li>
@@ -113,7 +113,7 @@ const EventPage: React.FC = () => {
 
               <li>
                 <strong>도박장에서 코인 도박을 한다</strong><br/>
-                보름달 코인🌕을 운명에 맡기면,<br/>
+                보름달 코인을 운명에 맡기면,<br/>
                 확률적으로 더 큰 보상을 얻을 수 있어요!
               </li>
 

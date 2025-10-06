@@ -201,7 +201,7 @@ const EventPage: React.FC = () => {
                 </tbody>
               </table>
               <p style={{ fontSize: '0.9rem', color: '#666', marginTop: '6px' }}>
-                총 기댓값 ≈ <b>0.9895배 (−1.05%)</b><br/>
+                총 기댓값 ≈ <b>0.95125배</b><br/>
                 각 베팅은 독립적인 확률 사건입니다.
               </p>
             </div>

@@ -92,7 +92,7 @@ const EventPage: React.FC = () => {
 
       {tab==='desc' && (
         <section className="event-section">
-          <h2>추석 이벤트 안내 🌕</h2>
+          <h2>(종료) 추석 이벤트 안내 🌕</h2>
 
           <div className="event-desc">
             <p><strong>이벤트 기간:</strong> 2025-10-06 ~ 2025-10-12 (KST)</p>

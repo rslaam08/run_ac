@@ -1,57 +1,70 @@
 // backend/src/routes/secret.ts
 import express from 'express';
 import { ensureJwt } from '../middleware/jwt';
-import User from '../models/User';
-// ⚠️ 아래 Record 모델 이름/필드명은 프로젝트 기준으로 바꿔주세요.
-// 예: models/Record.ts 에 runbility(=rating)와 createdAt 이 있다고 가정.
 import Record from '../models/Record';
+import { getRunbility } from '../utils/runbility';
 
 const router = express.Router();
 
-/** JWT 페이로드 헬퍼 (프로젝트에 이미 쓰던 패턴) */
 function getJwtUser(req: express.Request): { seq: number; name?: string; isAdmin?: boolean } | null {
   const a = (req as any).jwtUser;
   const b = (req as any).auth;
-  return (a && typeof a.seq === 'number') ? a
-       : (b && typeof b.seq === 'number') ? b
-       : null;
+  return (a && typeof a.seq === 'number')
+    ? a
+    : (b && typeof b.seq === 'number')
+    ? b
+    : null;
 }
 
 /**
- * GET /api/secret/check
  * 조건:
- *  i) 2025-12-22(포함) 이후 업로드한 기록 존재
- * ii) runbility(또는 rating) >= 2000
- * 자격 미달이면 403 + "you are not qualified"
- * 자격 충족이면 200 + "well done.... the secret code is (answer)"
+ *  i) since(기본 2025-12-22 00:00:00+09:00) 이후 업로드한 기록
+ * ii) runbility >= 2000 (timeSec, distance로 서버에서 계산)
+ *
+ * 환경변수로 테스트 날짜/코드를 바꿀 수 있음:
+ *   SECRET_SINCE = '2025-12-14T00:00:00+09:00'
+ *   SECRET_CODE  = '(...원하는 문자열...)'
  */
 router.get('/check', ensureJwt, async (req, res) => {
   try {
     const me = getJwtUser(req);
     if (!me) return res.status(401).json({ error: 'Unauthorized' });
 
-    // KST 2025-12-22 00:00:00
-    const since = new Date('2025-12-13T00:00:00+09:00');
+    // KST 기준 문자열을 ENV로 받으면 테스트/운영 전환 쉬움
+    const sinceStr = process.env.SECRET_SINCE || '2025-12-14T00:00:00+09:00';
+    const since = new Date(sinceStr);
 
-    // ⚠️ 필드명 확인: runbility 필드명이 'runbility'인지 'rating'인지 프로젝트에 맞추세요.
-    // createdAt 은 Mongoose timestamps 로 있다고 가정.
-    const hasQualified = await Record.exists({
-      userSeq: me.seq,                // 또는 seq, ownerSeq 등 프로젝트 스키마에 맞게
-      runbility: { $gte: 2000 },      // 또는 rating: { $gte: 2000 }
-      createdAt: { $gte: since },
-    });
+    // 필요한 필드만 읽어와 성능/보안 개선
+    const cursor = Record.find(
+      { userSeq: me.seq, createdAt: { $gte: since } },
+      { timeSec: 1, distance: 1, createdAt: 1 }
+    ).cursor();
 
-    if (!hasQualified) {
-      // 자격 미달: 정답 절대 노출 안 함
+    let qualified = false;
+
+    // 스트리밍으로 순회 → 하나라도 기준 충족하면 통과
+    for await (const doc of cursor as any) {
+      const timeSec = Number(doc.timeSec);
+      const distanceKm = Number(doc.distance);
+      if (!Number.isFinite(timeSec) || !Number.isFinite(distanceKm) || distanceKm <= 0) continue;
+
+      const rb = getRunbility(timeSec, distanceKm);
+      if (rb >= 2000) {
+        qualified = true;
+        break;
+      }
+    }
+
+    if (!qualified) {
       return res.status(403).json({ ok: false, message: 'you are not qualified' });
     }
 
-    // 자격 충족: 정답은 서버의 환경변수나 안전한 저장소에서만 로드
     const code = process.env.SECRET_CODE || '(answer)';
+    // 프론트만으로는 알 수 없도록 서버에서만 노출
     return res.json({
       ok: true,
-      message: `well done.... the secret code is (answer)`,
-      answer: code, // 프론트는 이 값을 UI에 띄우기만 함
+      message: 'well done.... the secret code is (answer)',
+      answer: code,
     });
   } catch (e) {
     console.error('[secret/check] error:', e);

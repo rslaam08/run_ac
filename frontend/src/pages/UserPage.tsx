@@ -424,7 +424,6 @@ const UserPage: React.FC = () => {
           <button type="submit">업로드</button>
         </form>
       )}
-
       {/* --- Super Secret Area (본인 페이지 최하단, 살짝 숨김) --- */}
       {currentSeq === user.seq && (
         <div style={{ marginTop: '24px', opacity: 0.65 }}>

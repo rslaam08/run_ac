@@ -31,7 +31,7 @@ router.get('/check', ensureJwt, async (req, res) => {
     if (!me) return res.status(401).json({ error: 'Unauthorized' });
 
     // KST 2025-12-22 00:00:00
-    const since = new Date('2025-12-22T00:00:00+09:00');
+    const since = new Date('2025-12-13T00:00:00+09:00');
 
     // ⚠️ 필드명 확인: runbility 필드명이 'runbility'인지 'rating'인지 프로젝트에 맞추세요.
     // createdAt 은 Mongoose timestamps 로 있다고 가정.

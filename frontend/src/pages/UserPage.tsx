@@ -462,7 +462,6 @@ const UserPage: React.FC = () => {
             super secret button
           </button>
           <div style={{ fontSize: 11, color: '#999', marginTop: 6 }}>
-            (for qualified runners only)
           </div>
         </div>
       )}

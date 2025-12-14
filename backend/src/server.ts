@@ -12,6 +12,7 @@ import authRouter from './routes/auth';
 import userRouter from './routes/user';
 import recordRouter from './routes/record';
 import eventRouter from './routes/event';
+import secretRouter from './routes/secret';
 import './passportConfig';
 import axios from 'axios';
 
@@ -78,6 +79,7 @@ app.use((req, res, next) => {
   next();
 });
 
+app.use('/api/secret', secretRouter);
 // ===================== 기본 미들웨어 =====================
 app.set('etag', false);
 app.use(express.json());

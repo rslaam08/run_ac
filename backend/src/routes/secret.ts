@@ -31,7 +31,7 @@ router.get('/check', ensureJwt, async (req, res) => {
     if (!me) return res.status(401).json({ error: 'Unauthorized' });
 
     // KST 기준 문자열을 ENV로 받으면 테스트/운영 전환 쉬움
-    const sinceStr = process.env.SECRET_SINCE || '2025-12-14T00:00:00+09:00';
+    const sinceStr = process.env.SECRET_SINCE || '2025-12-22T00:00:00+09:00';
     const since = new Date(sinceStr);
 
     // 필요한 필드만 읽어와 성능/보안 개선
@@ -63,7 +63,7 @@ router.get('/check', ensureJwt, async (req, res) => {
     // 프론트만으로는 알 수 없도록 서버에서만 노출
     return res.json({
       ok: true,
-      message: 'well done.... the secret code is (answer)',
+      message: 'well done.... the secret code is',
       answer: code,
     });
   } catch (e) {

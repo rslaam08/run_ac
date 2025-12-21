@@ -424,46 +424,6 @@ const UserPage: React.FC = () => {
           <button type="submit">업로드</button>
         </form>
       )}
-      {/* --- Super Secret Area (본인 페이지 최하단, 살짝 숨김) --- */}
-      {currentSeq === user.seq && (
-        <div style={{ marginTop: '24px', opacity: 0.65 }}>
-          <button
-            onClick={async () => {
-              try {
-                const r = await secretApi.check();
-                const msg = r.data?.message ?? 'well done...';
-                const ans = r.data?.answer ?? '(answer)';
-                alert(`${msg}\n\n${ans}`);
-              } catch (e: any) {
-                const s = e?.response?.status;
-                const m = e?.response?.data?.message;
-                if (s === 403) {
-                  alert(m || 'you are not qualified');
-                } else if (s === 401) {
-                  alert('로그인이 필요합니다.');
-                } else {
-                  alert('에러가 발생했습니다.');
-                }
-              }
-            }}
-            style={{
-              background: 'transparent',
-              border: '1px dashed #ccc',
-              color: '#666',
-              padding: '6px 10px',
-              borderRadius: 6,
-              fontSize: '12px',
-              cursor: 'pointer'
-            }}
-            aria-label="super secret button"
-            title="super secret button"
-          >
-            super secret button
-          </button>
-          <div style={{ fontSize: 11, color: '#999', marginTop: 6 }}>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

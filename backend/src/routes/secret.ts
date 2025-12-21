@@ -59,11 +59,11 @@ router.get('/check', ensureJwt, async (req, res) => {
       return res.status(403).json({ ok: false, message: 'you are not qualified' });
     }
 
-    const code = process.env.SECRET_CODE || '(answer)';
+    const code = process.env.SECRET_CODE || '이 메세지를 캡쳐하여 3509 이승민에게 문의하세요.';
     // 프론트만으로는 알 수 없도록 서버에서만 노출
     return res.json({
       ok: true,
-      message: 'well done.... the secret code is',
+      message: 'well done.... you solved the problem',
       answer: code,
     });
   } catch (e) {

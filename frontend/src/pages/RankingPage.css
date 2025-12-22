@@ -46,6 +46,7 @@
 .ranking-table tr:hover {
   background: #f0f4f8;
 }
+
 /* 페이지 네비게이터 */
 .pager {
   display: flex;
@@ -116,9 +117,13 @@
   font-weight: bold;
 }
 
+/* ✅ td가 아니라 span에서만 그라데이션/색 적용(삐져나옴 방지) */
+.rating-value {
+  display: inline-block;
+  white-space: nowrap;
+}
 
 /* 4) 10000 초과는 볼드 */
 .rating-bold {
   font-weight: bold;
 }
-

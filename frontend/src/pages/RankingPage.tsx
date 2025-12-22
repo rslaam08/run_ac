@@ -161,13 +161,16 @@ const RankingPage: React.FC = () => {
               <tr key={u.seq}>
                 <td>{ratingPage * PAGE_SIZE + i + 1}</td>
                 <td>{u.name}</td>
-                <td
-                  className={[
-                    getRatingClass(u.rating),
-                    u.rating > 10000 ? 'rating-bold' : ''
-                  ].join(' ')}
-                >
-                  {u.rating.toFixed(2)}
+                <td>
+                  <span
+                    className={[
+                      'rating-value',
+                      getRatingClass(u.rating),
+                      u.rating > 10000 ? 'rating-bold' : ''
+                    ].join(' ')}
+                  >
+                    {u.rating.toFixed(2)}
+                  </span>
                 </td>
               </tr>
             ))}
@@ -202,13 +205,16 @@ const RankingPage: React.FC = () => {
                 <td>{r.name}</td>
                 <td>{r.distance.toFixed(2)}</td>
                 <td>{r.pace}</td>
-                <td
-                  className={[
-                    getRatingClass(r.runbility),
-                    r.runbility > 10000 ? 'rating-bold' : ''
-                  ].join(' ')}
-                >
-                  {r.runbility.toFixed(2)}
+                <td>
+                  <span
+                    className={[
+                      'rating-value',
+                      getRatingClass(r.runbility),
+                      r.runbility > 10000 ? 'rating-bold' : ''
+                    ].join(' ')}
+                  >
+                    {r.runbility.toFixed(2)}
+                  </span>
                 </td>
               </tr>
             ))}
